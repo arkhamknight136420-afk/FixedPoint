@@ -27,7 +27,7 @@ public:
 	void ToggleCrouch();
 
 	// Interaction behavior will be implemented after the interaction system
-	// is designed. The controller can already forward the input here.
+	// is designed. The controller can already forward the input here
 	void TryInteract();
 
 private:
