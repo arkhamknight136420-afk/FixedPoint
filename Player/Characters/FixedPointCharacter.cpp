@@ -5,7 +5,11 @@
 #include "Components/CapsuleComponent.h"
 #include "../MovementComponents/FixedPointMovementComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "../../Interfaces/FixedPointInteractableInterface.h"
+#include "Engine/Engine.h"
 #include "GameFramework/Controller.h"
+
+// LIFE CYCLE
 
 AFixedPointCharacter::AFixedPointCharacter(
 	const FObjectInitializer& ObjectInitializer)
@@ -13,27 +17,38 @@ AFixedPointCharacter::AFixedPointCharacter(
 		ObjectInitializer.SetDefaultSubobjectClass<UFixedPointMovementComponent>(
 			ACharacter::CharacterMovementComponentName))
 {
-	// Standard first-person rotation behavior: yaw follows the controller,
-	// while pitch is left to the camera rather than tilting the capsule.
-	bUseControllerRotationPitch = false;
-	bUseControllerRotationYaw = true;
-	bUseControllerRotationRoll = false;
+	InitializeMovementComponent();
+
+	InitializeCameraComponent();
+
+	InitializeInteractionCapsuleComponent();
+
+	
+}
+
+void AFixedPointCharacter::BeginPlay()
+{
+	Super::BeginPlay();
+
+	BindInteractionCapsuleEvents();
+}
+
+// MOVEMENT
+
+void AFixedPointCharacter::InitializeMovementComponent()
+{
 
 	UCharacterMovementComponent* MovementComponent = GetCharacterMovement();
+
+	bUseControllerRotationPitch = false;
+
+	bUseControllerRotationYaw = true;
+
+	bUseControllerRotationRoll = false;
+
 	MovementComponent->bOrientRotationToMovement = false;
+
 	MovementComponent->GetNavAgentPropertiesRef().bCanCrouch = true;
-
-	FirstPersonCamera =
-		CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
-
-	FirstPersonCamera->SetupAttachment(GetCapsuleComponent());
-
-	// Approximately eye height for the default Character capsule.
-	// This can be tuned later from the character Blueprint.
-	FirstPersonCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 64.0f));
-
-	// Pitch and yaw come from the owning PlayerController's control rotation.
-	FirstPersonCamera->bUsePawnControlRotation = true;
 }
 
 void AFixedPointCharacter::Move(const FVector2D& MovementInput)
@@ -73,6 +88,7 @@ bool AFixedPointCharacter::IsSprintRequested() const
 
 	return MovementComponent->WantsToSprint();
 }
+
 void AFixedPointCharacter::ToggleCrouch()
 {
 	if (IsCrouched())
@@ -85,8 +101,119 @@ void AFixedPointCharacter::ToggleCrouch()
 	}
 }
 
+// INTERACTION
+
+void AFixedPointCharacter::InitializeInteractionCapsuleComponent()
+{
+	InteractionCapsule = CreateDefaultSubobject<UCapsuleComponent>(TEXT("InteractionCapsule"));
+
+	InteractionCapsule->SetupAttachment(PlayerCamera);
+
+	InteractionCapsule->SetRelativeRotation(FRotator(90.f, 0, 0));
+
+	InteractionCapsule->SetCapsuleHalfHeight(130.f);
+
+	InteractionCapsule->SetCapsuleRadius(30.f);
+
+	InteractionCapsule->SetRelativeLocation(FVector(110.f, 0, 0));
+
+	InteractionCapsule->SetCollisionEnabled(ECollisionEnabled::QueryOnly);
+
+	InteractionCapsule->SetCollisionObjectType(ECC_WorldDynamic);
+
+	InteractionCapsule->SetCollisionResponseToAllChannels(ECR_Ignore);
+
+	InteractionCapsule->SetCollisionResponseToChannel(
+		ECC_GameTraceChannel1, ECR_Overlap);
+
+	InteractionCapsule->SetGenerateOverlapEvents(true);
+
+	//  seting your project's Interactable channel to Overlap
+	// on this component in BP_FixedPointCharacter.
+
+	
+}
+void AFixedPointCharacter::BindInteractionCapsuleEvents()
+{
+	InteractionCapsule->OnComponentBeginOverlap.AddUniqueDynamic(
+		this, &AFixedPointCharacter::OnInteractionCapsuleBeginOverlap);
+
+	InteractionCapsule->OnComponentEndOverlap.AddUniqueDynamic(
+		this, &AFixedPointCharacter::OnInteractionCapsuleEndOverlap);
+}
+
+void AFixedPointCharacter::OnInteractionCapsuleBeginOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex,
+	bool bFromSweep,
+	const FHitResult& SweepResult)
+{
+	
+
+	if (!IsLocallyControlled() ||
+		!IsValid(OtherActor) ||
+		OtherActor == this ||
+		!IsValid(OtherComp) ||
+		!OtherActor->GetClass()->ImplementsInterface(
+			UFixedPointInteractableInterface::StaticClass()))
+	{
+		return;
+	}
+
+	
+
+	AvailableInteractables.AddUnique(OtherActor);
+
+	UE_LOG(LogTemp, Log, TEXT("Added Valid interaction candidate: %s"),
+		*OtherActor->GetName());
+}
+
+void AFixedPointCharacter::OnInteractionCapsuleEndOverlap(
+	UPrimitiveComponent* OverlappedComponent,
+	AActor* OtherActor,
+	UPrimitiveComponent* OtherComp,
+	int32 OtherBodyIndex)
+{
+	if (!IsLocallyControlled() ||
+		!IsValid(OtherActor) ||
+		OtherActor == this ||
+		!OtherActor->GetClass()->ImplementsInterface(
+			UFixedPointInteractableInterface::StaticClass()))
+	{
+		return;
+	}
+	
+
+	AvailableInteractables.Remove(OtherActor);
+
+	UE_LOG(LogTemp, Log, TEXT(" Removed Valid Interaction candidate: %s"),
+		*OtherActor->GetName());
+
+
+}
+
+
+
 void AFixedPointCharacter::TryInteract()
 {
 	// Intentionally empty in this pass. This function will initiate the
 	// character-owned, server-validated interaction flow later.
+}
+
+// CAMERA
+
+void AFixedPointCharacter::InitializeCameraComponent()
+{
+	PlayerCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("FirstPersonCamera"));
+
+	PlayerCamera->SetupAttachment(GetCapsuleComponent());
+
+	// Approximately eye height for the default Character capsule.
+	// This can be tuned later from the character Blueprint.
+	PlayerCamera->SetRelativeLocation(FVector(0.0f, 0.0f, 74.0f));
+
+	// Pitch and yaw come from the owning PlayerController's control rotation.
+	PlayerCamera->bUsePawnControlRotation = true;
 }

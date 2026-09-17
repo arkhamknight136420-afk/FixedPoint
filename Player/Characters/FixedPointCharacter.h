@@ -7,6 +7,8 @@
 #include "FixedPointCharacter.generated.h"
 
 class UCameraComponent;
+class UCapsuleComponent;
+class UPrimitiveComponent;
 
 UCLASS()
 class FIXEDPOINT_API AFixedPointCharacter : public ACharacter
@@ -14,21 +16,78 @@ class FIXEDPOINT_API AFixedPointCharacter : public ACharacter
 	GENERATED_BODY()
 
 public:
+
+	
+	// LIFE CYCLE
+	
 	AFixedPointCharacter(const FObjectInitializer& ObjectInitializer);
 
-	// Receives device-independent movement intent from the PlayerController.
+	virtual void BeginPlay() override;
+
+
+	// MOVEMENT
+	
+	
 	void Move(const FVector2D& MovementInput);
 
-	// This is only the controller-facing API for now. The next movement pass
-	// will move sprint intent into the custom predicted movement component.
+	
 	void SetSprintRequested(bool bRequested);
 	bool IsSprintRequested() const;
 
 	void ToggleCrouch();
 
-	// Interaction behavior will be implemented after the interaction system
-	// is designed. The controller can already forward the input here
+	
+	// INTERACTION
+	
 	void TryInteract();
+
+
+
+protected:
+	
+	// Movement
+	
+	void InitializeMovementComponent();
+
+
+	
+	// INTERACTION
+	
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void InitializeInteractionCapsuleComponent();
+
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void BindInteractionCapsuleEvents();
+
+
+	UFUNCTION()
+	void OnInteractionCapsuleBeginOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex,
+		bool bFromSweep,
+		const FHitResult& SweepResult);
+
+	UFUNCTION()
+	void OnInteractionCapsuleEndOverlap(
+		UPrimitiveComponent* OverlappedComponent,
+		AActor* OtherActor,
+		UPrimitiveComponent* OtherComp,
+		int32 OtherBodyIndex);
+
+
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = "Interaction")
+	UCapsuleComponent* InteractionCapsule = nullptr;
+
+	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = "Interaction")
+	TArray<TObjectPtr<AActor>> AvailableInteractables;
+
+
+
+
+
 
 private:
 
@@ -36,10 +95,21 @@ private:
 	// CAMERA
 	//=====================================================
 
+	UFUNCTION(BlueprintCallable, Category = "Camera")
+	void InitializeCameraComponent();
+
+
 	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera",
 		meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UCameraComponent> FirstPersonCamera = nullptr;
+	TObjectPtr<UCameraComponent> PlayerCamera = nullptr;
 
 	// Temporary intent storage. This does not change movement speed and is not
 	// replicated; the custom movement component will replace it next.
+
+
+	
+	
+
+
+
 };
