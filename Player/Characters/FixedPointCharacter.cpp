@@ -7,6 +7,7 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "../../Interfaces/FixedPointInteractableInterface.h"
 #include "Engine/Engine.h"
+#include "DrawDebugHelpers.h"
 #include "GameFramework/Controller.h"
 
 // LIFE CYCLE
@@ -133,6 +134,7 @@ void AFixedPointCharacter::InitializeInteractionCapsuleComponent()
 
 	
 }
+
 void AFixedPointCharacter::BindInteractionCapsuleEvents()
 {
 	InteractionCapsule->OnComponentBeginOverlap.AddUniqueDynamic(
@@ -166,6 +168,9 @@ void AFixedPointCharacter::OnInteractionCapsuleBeginOverlap(
 
 	AvailableInteractables.AddUnique(OtherActor);
 
+	
+
+
 	UE_LOG(LogTemp, Log, TEXT("Added Valid interaction candidate: %s"),
 		*OtherActor->GetName());
 }
@@ -194,12 +199,114 @@ void AFixedPointCharacter::OnInteractionCapsuleEndOverlap(
 
 }
 
+AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
+{
+	if (!IsValid(PlayerCamera))
+	{
+		return nullptr;
+	}
+
+	const FVector CameraLocation =
+		PlayerCamera->GetComponentLocation();
+
+	const FVector CameraForward =
+		PlayerCamera->GetForwardVector();
+
+	AActor* BestActor = nullptr;
+	float BestAlignment = -1.0f;
+
+	for (const TObjectPtr<AActor>& CandidatePtr : AvailableInteractables)
+	{
+		AActor* Candidate = CandidatePtr.Get();
+
+		if (!IsValid(Candidate))
+		{
+			continue;
+		}
+
+		FVector TargetLocation;
+		FVector BoundsExtent;
+
+		Candidate->GetActorBounds(
+			true,
+			TargetLocation,
+			BoundsExtent);
+
+		const FVector DirectionToCandidate =
+			(TargetLocation - CameraLocation).GetSafeNormal();
+
+		const float AimAlignment = FVector::DotProduct(
+			CameraForward,
+			DirectionToCandidate);
+
+		if (AimAlignment <= 0.0f)
+		{
+			continue;
+		}
+
+		if (AimAlignment > BestAlignment)
+		{
+			BestAlignment = AimAlignment;
+			BestActor = Candidate;
+		}
+	}
+
+	return BestActor;
+}
 
 
 void AFixedPointCharacter::TryInteract()
 {
-	// Intentionally empty in this pass. This function will initiate the
-	// character-owned, server-validated interaction flow later.
+	FocusedInteractable =
+		FindMostAlignedInteractableActor();
+
+	if (!IsValid(FocusedInteractable))
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("No interactable selected"));
+
+		return;
+	}
+
+	// Rest of your debug code...
+
+
+	FVector BoundsOrigin;
+	FVector BoundsExtent;
+
+	FocusedInteractable->GetActorBounds(
+		true,
+		BoundsOrigin,
+		BoundsExtent);
+
+	DrawDebugBox(
+		GetWorld(),
+		BoundsOrigin,
+		BoundsExtent + FVector(5.0f, 5.0f, 5.0f),
+		FColor::Green,
+		false,
+		2.0f,
+		0,
+		4.0f);
+
+	
+
+	DrawDebugString(
+		GetWorld(),
+		BoundsOrigin + FVector(0.0f, 0.0f, BoundsExtent.Z + 20.0f),
+		FocusedInteractable->GetName(),
+		nullptr,
+		FColor::Green,
+		2.0f,
+		true);
+
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT("Selected interactable: %s"),
+		*FocusedInteractable->GetName());
 }
 
 // CAMERA

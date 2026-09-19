@@ -6,6 +6,7 @@
 #include "GameFramework/Character.h"
 #include "FixedPointCharacter.generated.h"
 
+
 class UCameraComponent;
 class UCapsuleComponent;
 class UPrimitiveComponent;
@@ -60,7 +61,7 @@ protected:
 	void BindInteractionCapsuleEvents();
 
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void OnInteractionCapsuleBeginOverlap(
 		UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor,
@@ -69,13 +70,16 @@ protected:
 		bool bFromSweep,
 		const FHitResult& SweepResult);
 
-	UFUNCTION()
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
 	void OnInteractionCapsuleEndOverlap(
 		UPrimitiveComponent* OverlappedComponent,
 		AActor* OtherActor,
 		UPrimitiveComponent* OtherComp,
 		int32 OtherBodyIndex);
 
+
+
+	AActor* FindMostAlignedInteractableActor() const;
 
 
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = "Interaction")
@@ -85,15 +89,16 @@ protected:
 	TArray<TObjectPtr<AActor>> AvailableInteractables;
 
 
-
+	UPROPERTY(BlueprintReadOnly, Category = "Interaction")
+	AActor* FocusedInteractable = nullptr;
 
 
 
 private:
 
-	//=====================================================
+	
 	// CAMERA
-	//=====================================================
+	
 
 	UFUNCTION(BlueprintCallable, Category = "Camera")
 	void InitializeCameraComponent();
@@ -103,8 +108,7 @@ private:
 		meta = (AllowPrivateAccess = "true"))
 	TObjectPtr<UCameraComponent> PlayerCamera = nullptr;
 
-	// Temporary intent storage. This does not change movement speed and is not
-	// replicated; the custom movement component will replace it next.
+
 
 
 	
