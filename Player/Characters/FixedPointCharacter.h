@@ -54,10 +54,10 @@ protected:
 	
 	// INTERACTION
 	
-	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	
 	void InitializeInteractionCapsuleComponent();
 
-	UFUNCTION(BlueprintCallable, Category = "Interaction")
+
 	void BindInteractionCapsuleEvents();
 
 
@@ -81,6 +81,11 @@ protected:
 
 	AActor* FindMostAlignedInteractableActor() const;
 
+	UFUNCTION(Server, Reliable)
+	void ServerTryInteract(AActor* RequestedTarget);
+
+	bool IsValidInteractionTarget(const AActor* RequestedTarget) const;
+
 
 	UPROPERTY(VisibleAnywhere,BlueprintReadOnly, Category = "Interaction")
 	UCapsuleComponent* InteractionCapsule = nullptr;
@@ -92,6 +97,21 @@ protected:
 	UPROPERTY(BlueprintReadOnly, Category = "Interaction")
 	AActor* FocusedInteractable = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Interaction|Validation", meta = (ClampMin = "0.0", UIMin = "0.0"))
+	float MaxInteractionDistance = 300.f;
+
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Interaction|Validation",
+		meta = (
+			ClampMin = "-1.0",
+			ClampMax = "1.0",
+			UIMin = "-1.0",
+			UIMax = "1.0"))
+	float MinimumInteractionAlignment = 0.25f;
+
+
 
 
 private:
@@ -100,7 +120,7 @@ private:
 	// CAMERA
 	
 
-	UFUNCTION(BlueprintCallable, Category = "Camera")
+
 	void InitializeCameraComponent();
 
 

@@ -8,6 +8,7 @@
 #include "../../Interfaces/FixedPointInteractableInterface.h"
 #include "Engine/Engine.h"
 #include "DrawDebugHelpers.h"
+#include "Engine/World.h"
 #include "GameFramework/Controller.h"
 
 // LIFE CYCLE
@@ -206,6 +207,13 @@ AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
 		return nullptr;
 	}
 
+	UWorld* World = GetWorld();
+
+	if (!IsValid(World))
+	{
+		return nullptr;
+	}
+
 	const FVector CameraLocation =
 		PlayerCamera->GetComponentLocation();
 
@@ -213,7 +221,12 @@ AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
 		PlayerCamera->GetForwardVector();
 
 	AActor* BestActor = nullptr;
+
 	float BestAlignment = -1.0f;
+
+	FCollisionQueryParams QueryParameters;
+
+	QueryParameters.AddIgnoredActor(this);
 
 	for (const TObjectPtr<AActor>& CandidatePtr : AvailableInteractables)
 	{
@@ -225,6 +238,7 @@ AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
 		}
 
 		FVector TargetLocation;
+
 		FVector BoundsExtent;
 
 		Candidate->GetActorBounds(
@@ -235,11 +249,28 @@ AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
 		const FVector DirectionToCandidate =
 			(TargetLocation - CameraLocation).GetSafeNormal();
 
-		const float AimAlignment = FVector::DotProduct(
-			CameraForward,
-			DirectionToCandidate);
+		const float AimAlignment =
+			FVector::DotProduct(
+				CameraForward,
+				DirectionToCandidate);
 
 		if (AimAlignment <= 0.0f)
+		{
+			continue;
+		}
+
+		FHitResult HitResult;
+
+		const bool bHitSomething =
+			World->LineTraceSingleByChannel(
+				HitResult,
+				CameraLocation,
+				TargetLocation,
+				ECC_Visibility,
+				QueryParameters);
+
+		if (bHitSomething &&
+			HitResult.GetActor() != Candidate)
 		{
 			continue;
 		}
@@ -247,6 +278,7 @@ AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
 		if (AimAlignment > BestAlignment)
 		{
 			BestAlignment = AimAlignment;
+
 			BestActor = Candidate;
 		}
 	}
@@ -270,8 +302,10 @@ void AFixedPointCharacter::TryInteract()
 		return;
 	}
 
-	// Rest of your debug code...
 
+	ServerTryInteract(FocusedInteractable);
+
+	// Rest of your debug code...
 
 	FVector BoundsOrigin;
 	FVector BoundsExtent;
@@ -307,6 +341,175 @@ void AFixedPointCharacter::TryInteract()
 		Log,
 		TEXT("Selected interactable: %s"),
 		*FocusedInteractable->GetName());
+}
+
+bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarget) const
+{
+	if (!HasAuthority())
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Interaction Rejected: Validation was called without Authority."));
+
+		return false;	
+	}
+
+	if (!IsValid(RequestedTarget))
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Interaction rejected: requested target is invalid."));
+
+		return false;
+	}
+
+	if (RequestedTarget == this)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Interaction rejected: character targeted itself."));
+
+		return false;
+	}
+
+	if (!RequestedTarget->GetClass()->ImplementsInterface(UFixedPointInteractableInterface::StaticClass()))
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"Interaction rejected: %s does not implement the interaction interface."),
+			*GetNameSafe(RequestedTarget));
+
+		return false;
+	}
+
+	UWorld* World = GetWorld();
+
+	if (!IsValid(World))
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT("Interaction rejected: server world is invalid."));
+
+		return false;
+	}
+
+	if (!IsValid(PlayerCamera))
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Interaction rejected: PlayerCamera is invalid."));
+
+		return false;
+
+	}
+
+
+
+	const FVector ViewLocation = PlayerCamera->GetComponentLocation();
+
+	const FVector ViewDirection = GetBaseAimRotation().Vector();
+
+	FVector TargetLocation;
+
+	FVector TargetExtent;
+
+	RequestedTarget->GetActorBounds(
+		true,
+		TargetLocation,
+		TargetExtent);
+
+	const FVector ViewToTarget = TargetLocation - ViewLocation;
+
+	const float DistanceSquared = ViewToTarget.SizeSquared(); 
+	// square the x y and z then add the squared sums together to give u the squared distance 
+
+	const float MaxDistanceSquared = FMath::Square(MaxInteractionDistance);
+	// u must also square this distance as you have done the other or else ur comparing unequivalent values
+
+
+	if (DistanceSquared > MaxDistanceSquared) // return because its to far away to interact with
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"Interaction rejected: %s is %.1f units away; maximum is %.1f."),
+			*GetNameSafe(RequestedTarget),
+			FMath::Sqrt(DistanceSquared),
+			MaxInteractionDistance);
+
+		return false;
+
+	}
+
+	const  FVector DirectionToTarget = ViewToTarget.GetSafeNormal(); // takes the vector eliminates distance while keeping direction
+
+	const float AimAlignment = FVector::DotProduct(ViewDirection, DirectionToTarget);
+
+	if (AimAlignment < MinimumInteractionAlignment) // if were not rotated far enough towards the object were trying to interact with
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"Interaction rejected: %s has alignment %.2f; minimum is %.2f."),
+			*GetNameSafe(RequestedTarget),
+			AimAlignment,
+			MinimumInteractionAlignment);
+
+		return false;
+	}
+
+	FHitResult HitResult;
+	FCollisionQueryParams QueryParameters;
+
+	QueryParameters.AddIgnoredActor(this);
+
+	const bool bHitSomething =
+		World->LineTraceSingleByChannel(
+			HitResult,
+			ViewLocation,
+			TargetLocation,
+			ECC_Visibility,
+			QueryParameters);
+
+	if (bHitSomething && HitResult.GetActor() != RequestedTarget)
+	{
+		UE_LOG(
+			LogTemp,
+			Warning,
+			TEXT(
+				"Interaction rejected: %s blocks visibility to %s."),
+			*GetNameSafe(HitResult.GetActor()),
+			*GetNameSafe(RequestedTarget));
+
+		return false;
+	}
+
+	return true;
+
+
+
+
+}
+
+void AFixedPointCharacter::ServerTryInteract_Implementation(AActor* RequestedTarget) 
+{
+
+	if (!IsValidInteractionTarget(RequestedTarget))
+	{
+		return;
+	}
+	UE_LOG(
+		LogTemp,
+		Log,
+		TEXT(
+			"ServerTryInteract executed. Authority: %s | Character: %s | Target: %s"),
+		HasAuthority() ? TEXT("true") : TEXT("false"),
+		*GetName(),
+		*GetNameSafe(RequestedTarget));
+
 }
 
 // CAMERA
