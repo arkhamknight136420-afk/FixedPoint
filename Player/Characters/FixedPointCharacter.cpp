@@ -10,6 +10,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameFramework/Controller.h"
+#include "../../Inventory/FixedPointInventoryComponent.h"
 
 // LIFE CYCLE
 
@@ -24,6 +25,8 @@ AFixedPointCharacter::AFixedPointCharacter(
 	InitializeCameraComponent();
 
 	InitializeInteractionCapsuleComponent();
+
+	InitializeInventoryComponent();
 
 	
 }
@@ -494,23 +497,34 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 }
 
-void AFixedPointCharacter::ServerTryInteract_Implementation(AActor* RequestedTarget) 
+void AFixedPointCharacter::ServerTryInteract_Implementation(
+	AActor* RequestedTarget)
 {
-
 	if (!IsValidInteractionTarget(RequestedTarget))
 	{
 		return;
 	}
-	UE_LOG(
-		LogTemp,
-		Log,
-		TEXT(
-			"ServerTryInteract executed. Authority: %s | Character: %s | Target: %s"),
-		HasAuthority() ? TEXT("true") : TEXT("false"),
-		*GetName(),
-		*GetNameSafe(RequestedTarget));
 
+	if (!IFixedPointInteractableInterface::Execute_CanInteract(
+		RequestedTarget,
+		this))
+	{
+		return;
+	}
+
+	IFixedPointInteractableInterface::Execute_Interact(
+		RequestedTarget,
+		this);
 }
+
+//INVENTORY 
+
+void AFixedPointCharacter::InitializeInventoryComponent()
+{
+	InventoryComponent = CreateDefaultSubobject<UFixedPointInventoryComponent>(TEXT("Inventory Component"));
+}
+
+
 
 // CAMERA
 

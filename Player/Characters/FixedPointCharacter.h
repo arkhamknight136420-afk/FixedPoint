@@ -10,6 +10,7 @@
 class UCameraComponent;
 class UCapsuleComponent;
 class UPrimitiveComponent;
+class UFixedPointInventoryComponent;
 
 UCLASS()
 class FIXEDPOINT_API AFixedPointCharacter : public ACharacter
@@ -46,7 +47,7 @@ public:
 
 protected:
 	
-	// Movement
+	// MOVEMENT
 	
 	void InitializeMovementComponent();
 
@@ -111,7 +112,12 @@ protected:
 			UIMax = "1.0"))
 	float MinimumInteractionAlignment = 0.25f;
 
+	//INVENTORY
+	
+	void InitializeInventoryComponent();
 
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+	UFixedPointInventoryComponent* InventoryComponent = nullptr;
 
 
 private:
