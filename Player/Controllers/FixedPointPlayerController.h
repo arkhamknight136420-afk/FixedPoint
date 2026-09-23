@@ -67,6 +67,27 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
 	TObjectPtr<UInputAction> IA_Interact = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Inventory")
+	TObjectPtr<UInputAction> IA_InventorySlot1 = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Inventory")
+	TObjectPtr<UInputAction> IA_InventorySlot2 = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Inventory")
+	TObjectPtr<UInputAction> IA_InventorySlot3 = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Inventory")
+	TObjectPtr<UInputAction> IA_UseItem = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Inventory")
+	TObjectPtr<UInputAction> IA_DropItem = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Inventory")
+	TObjectPtr<UInputAction> IA_PreviousInventorySlot = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Inventory")
+	TObjectPtr<UInputAction> IA_NextInventorySlot = nullptr;
+
 	//=====================================================
 	// INPUT PREFERENCES
 	//=====================================================
@@ -96,6 +117,21 @@ protected:
 	void HandleCrouchEnded();
 
 	void HandleInteract();
+
+	void HandleInventorySlot1();
+
+	void HandleInventorySlot2();
+
+	void HandleInventorySlot3();
+
+	void HandlePreviousInventorySlot();
+
+	void HandleNextInventorySlot();
+
+	void HandleUseItem();
+
+	void HandleDropItem();
+
 
 private:
 	AFixedPointCharacter* GetFixedPointCharacter() const;

@@ -119,6 +119,68 @@ void AFixedPointPlayerController::SetupInputComponent()
 			IA_Interact.Get(), ETriggerEvent::Started, this,
 			&AFixedPointPlayerController::HandleInteract);
 	}
+	if (IA_InventorySlot1)
+	{
+		EnhancedInputComponent->BindAction(
+			IA_InventorySlot1.Get(),
+			ETriggerEvent::Started,
+			this,
+			&AFixedPointPlayerController::HandleInventorySlot1);
+	}
+
+	if (IA_InventorySlot2)
+	{
+		EnhancedInputComponent->BindAction(
+			IA_InventorySlot2.Get(),
+			ETriggerEvent::Started,
+			this,
+			&AFixedPointPlayerController::HandleInventorySlot2);
+	}
+
+	if (IA_InventorySlot3)
+	{
+		EnhancedInputComponent->BindAction(
+			IA_InventorySlot3.Get(),
+			ETriggerEvent::Started,
+			this,
+			&AFixedPointPlayerController::HandleInventorySlot3);
+	}
+
+	if (IA_UseItem)
+	{
+		EnhancedInputComponent->BindAction(
+			IA_UseItem.Get(),
+			ETriggerEvent::Started,
+			this,
+			&AFixedPointPlayerController::HandleUseItem);
+	}
+
+	if (IA_DropItem)
+	{
+		EnhancedInputComponent->BindAction(
+			IA_DropItem.Get(),
+			ETriggerEvent::Started,
+			this,
+			&AFixedPointPlayerController::HandleDropItem);
+	}
+
+	if (IA_PreviousInventorySlot)
+	{
+		EnhancedInputComponent->BindAction(
+			IA_PreviousInventorySlot.Get(),
+			ETriggerEvent::Started,
+			this,
+			&AFixedPointPlayerController::HandlePreviousInventorySlot);
+	}
+
+	if (IA_NextInventorySlot)
+	{
+		EnhancedInputComponent->BindAction(
+			IA_NextInventorySlot.Get(),
+			ETriggerEvent::Started,
+			this,
+			&AFixedPointPlayerController::HandleNextInventorySlot);
+	}
 }
 
 void AFixedPointPlayerController::SetCrouchToggleEnabled(const bool bEnabled)
@@ -232,6 +294,65 @@ void AFixedPointPlayerController::HandleInteract()
 		ControlledCharacter->TryInteract();
 	}
 }
+
+void AFixedPointPlayerController::HandleInventorySlot1()
+{
+	if (AFixedPointCharacter* ControlledCharacter = GetFixedPointCharacter())
+	{
+		ControlledCharacter->SelectInventorySlot(0);
+	}
+}
+
+void AFixedPointPlayerController::HandleInventorySlot2()
+{
+	if (AFixedPointCharacter* ControlledCharacter = GetFixedPointCharacter())
+	{
+		ControlledCharacter->SelectInventorySlot(1);
+	}
+}
+
+void AFixedPointPlayerController::HandleInventorySlot3()
+{
+	if (AFixedPointCharacter* ControlledCharacter = GetFixedPointCharacter())
+	{
+		ControlledCharacter->SelectInventorySlot(2);
+	}
+}
+
+void AFixedPointPlayerController::HandlePreviousInventorySlot()
+{
+	if (AFixedPointCharacter* ControlledCharacter = GetFixedPointCharacter())
+	{
+		ControlledCharacter->CycleInventorySlot(-1);
+	}
+}
+
+void AFixedPointPlayerController::HandleNextInventorySlot()
+{
+	if (AFixedPointCharacter* ControlledCharacter = GetFixedPointCharacter())
+	{
+		ControlledCharacter->CycleInventorySlot(1);
+	}
+}
+
+void AFixedPointPlayerController::HandleUseItem()
+{
+	if (AFixedPointCharacter* ControlledCharacter = GetFixedPointCharacter())
+	{
+		UE_LOG(LogTemp, Log, TEXT("Use item input received for %s"),
+			*GetNameSafe(ControlledCharacter));
+
+		ControlledCharacter->UseEquippedItem();
+	}
+}
+void AFixedPointPlayerController::HandleDropItem()
+{
+	if (AFixedPointCharacter* ControlledCharacter = GetFixedPointCharacter())
+	{
+		ControlledCharacter->DropHeldItem();
+	}
+}
+
 
 AFixedPointCharacter* AFixedPointPlayerController::GetFixedPointCharacter() const
 {

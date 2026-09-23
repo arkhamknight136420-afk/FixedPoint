@@ -10,6 +10,7 @@
 #include "DrawDebugHelpers.h"
 #include "Engine/World.h"
 #include "GameFramework/Controller.h"
+#include "../../Inventory/Pickups/FixedPointPickup.h"
 #include "../../Inventory/FixedPointInventoryComponent.h"
 
 // LIFE CYCLE
@@ -20,6 +21,8 @@ AFixedPointCharacter::AFixedPointCharacter(
 		ObjectInitializer.SetDefaultSubobjectClass<UFixedPointMovementComponent>(
 			ACharacter::CharacterMovementComponentName))
 {
+	SetReplicates(true);
+
 	InitializeMovementComponent();
 
 	InitializeCameraComponent();
@@ -238,6 +241,16 @@ AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
 		if (!IsValid(Candidate))
 		{
 			continue;
+		}
+
+		// A newly carried pickup might still be in the local overlap list.
+		if (const AFixedPointPickup* Pickup =
+			Cast<AFixedPointPickup>(Candidate))
+		{
+			if (!Pickup->IsAvailableInWorld())
+			{
+				continue;
+			}
 		}
 
 		FVector TargetLocation;
@@ -524,7 +537,73 @@ void AFixedPointCharacter::InitializeInventoryComponent()
 	InventoryComponent = CreateDefaultSubobject<UFixedPointInventoryComponent>(TEXT("Inventory Component"));
 }
 
+void AFixedPointCharacter::SelectInventorySlot(int32 Index)
+{
+	if (IsLocallyControlled() &&
+		Index >= 0 &&
+		Index < UFixedPointInventoryComponent::SlotCount)
+	{
+		ServerSelectInventorySlot(Index);
+	}
+}
 
+void AFixedPointCharacter::ServerSelectInventorySlot_Implementation(
+	int32 Index)
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->SelectSlot(Index);
+	}
+}
+
+void AFixedPointCharacter::CycleInventorySlot(int32 Direction)
+{
+	if (IsLocallyControlled() &&
+		(Direction == -1 || Direction == 1))
+	{
+		ServerCycleInventorySlot(Direction);
+	}
+}
+
+void AFixedPointCharacter::ServerCycleInventorySlot_Implementation(
+	int32 Direction)
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->CycleSlot(Direction);
+	}
+}
+void AFixedPointCharacter::UseEquippedItem()
+{
+	if (IsLocallyControlled())
+	{
+		ServerUseEquippedItem();
+	}
+}
+
+void AFixedPointCharacter::ServerUseEquippedItem_Implementation()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->UseEquippedItem();
+	}
+}
+
+void AFixedPointCharacter::DropHeldItem()
+{
+	if (IsLocallyControlled())
+	{
+		ServerDropHeldItem();
+	}
+}
+
+void AFixedPointCharacter::ServerDropHeldItem_Implementation()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->DropHeldItem();
+	}
+}
 
 // CAMERA
 
