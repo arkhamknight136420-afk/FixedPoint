@@ -6,474 +6,537 @@
 #include "Engine/World.h"
 #include "Net/UnrealNetwork.h"
 
+namespace
+{
+    float GetPickupWeightPounds(const AFixedPointPickup* Pickup)
+    {
+        const UFixedPointItemDefinition* Definition = IsValid(Pickup)
+            ? Pickup->GetItemDefinition()
+            : nullptr;
+
+        return IsValid(Definition)
+            ? FMath::Max(0.0f, Definition->Weight)
+            : 0.0f;
+    }
+}
+
 UFixedPointInventoryComponent::UFixedPointInventoryComponent()
 {
-	PrimaryComponentTick.bCanEverTick = false;
-	SetIsReplicatedByDefault(true);
-	Slots.SetNum(SlotCount);
+    PrimaryComponentTick.bCanEverTick = false;
+    SetIsReplicatedByDefault(true);
+    Slots.SetNum(SlotCount);
 }
 
 void UFixedPointInventoryComponent::GetLifetimeReplicatedProps(
-	TArray<FLifetimeProperty>& OutLifetimeProps) const
+    TArray<FLifetimeProperty>& OutLifetimeProps) const
 {
-	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+    Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
-	DOREPLIFETIME_CONDITION(
-		UFixedPointInventoryComponent, Slots, COND_OwnerOnly);
+    DOREPLIFETIME_CONDITION(
+        UFixedPointInventoryComponent, Slots, COND_OwnerOnly);
 
-	DOREPLIFETIME_CONDITION(
-		UFixedPointInventoryComponent, SelectedSlot, COND_OwnerOnly);
+    DOREPLIFETIME_CONDITION(
+        UFixedPointInventoryComponent, SelectedSlot, COND_OwnerOnly);
 
-	DOREPLIFETIME_CONDITION(
-		UFixedPointInventoryComponent, WorldCarriedItem, COND_OwnerOnly);
+    DOREPLIFETIME_CONDITION(
+        UFixedPointInventoryComponent, WorldCarriedItem, COND_OwnerOnly);
+
+    DOREPLIFETIME_CONDITION(
+        UFixedPointInventoryComponent, TotalWeightPounds, COND_OwnerOnly);
 }
 
 void UFixedPointInventoryComponent::OnRep_InventoryState()
 {
-	// Temporary verification until the hotbar UI exists.
-	UE_LOG(
-		LogTemp,
-		Log,
-		TEXT("Owner inventory %s: [%s, %s, %s], selected %d, world carry %s"),
-		*GetNameSafe(GetOwner()),
-		*GetNameSafe(GetItemInSlot(0)),
-		*GetNameSafe(GetItemInSlot(1)),
-		*GetNameSafe(GetItemInSlot(2)),
-		SelectedSlot + 1,
-		*GetNameSafe(WorldCarriedItem.Get()));
+    UE_LOG(
+        LogTemp,
+        Log,
+        TEXT("Owner inventory %s: [%s, %s, %s], selected %d, world carry %s"),
+        *GetNameSafe(GetOwner()),
+        *GetNameSafe(GetItemInSlot(0)),
+        *GetNameSafe(GetItemInSlot(1)),
+        *GetNameSafe(GetItemInSlot(2)),
+        SelectedSlot + 1,
+        *GetNameSafe(WorldCarriedItem.Get()));
+}
+
+void UFixedPointInventoryComponent::OnRep_TotalWeightPounds()
+{
+    UE_LOG(
+        LogTemp,
+        Log,
+        TEXT("Owner carried weight %s: %.1f lb"),
+        *GetNameSafe(GetOwner()),
+        TotalWeightPounds);
 }
 
 AFixedPointPickup* UFixedPointInventoryComponent::GetItemInSlot(
-	int32 Index) const
+    int32 Index) const
 {
-	return Slots.IsValidIndex(Index) ? Slots[Index].Get() : nullptr;
+    return Slots.IsValidIndex(Index)
+        ? Slots[Index].Get()
+        : nullptr;
 }
 
 bool UFixedPointInventoryComponent::IsServerOwner() const
 {
-	return GetOwner() && GetOwner()->HasAuthority();
+    return GetOwner() && GetOwner()->HasAuthority();
 }
 
 AFixedPointCharacter*
 UFixedPointInventoryComponent::GetCharacterOwner() const
 {
-	return Cast<AFixedPointCharacter>(GetOwner());
+    return Cast<AFixedPointCharacter>(GetOwner());
 }
 
 int32 UFixedPointInventoryComponent::FindFreeSlot() const
 {
-	if (Slots.Num() != SlotCount)
-	{
-		return INDEX_NONE;
-	}
+    if (Slots.Num() != SlotCount)
+    {
+        return INDEX_NONE;
+    }
 
-	// If the player selected an empty slot, fill that slot first.
-	if (Slots.IsValidIndex(SelectedSlot) &&
-		!IsValid(GetItemInSlot(SelectedSlot)))
-	{
-		return SelectedSlot;
-	}
+    if (Slots.IsValidIndex(SelectedSlot) &&
+        !IsValid(GetItemInSlot(SelectedSlot)))
+    {
+        return SelectedSlot;
+    }
 
-	for (int32 Index = 0; Index < SlotCount; ++Index)
-	{
-		if (!IsValid(GetItemInSlot(Index)))
-		{
-			return Index;
-		}
-	}
+    for (int32 Index = 0; Index < SlotCount; ++Index)
+    {
+        if (!IsValid(GetItemInSlot(Index)))
+        {
+            return Index;
+        }
+    }
 
-	return INDEX_NONE;
+    return INDEX_NONE;
 }
 
 bool UFixedPointInventoryComponent::HasHandsFullItem() const
 {
-	for (const TObjectPtr<AFixedPointPickup>& Item : Slots)
-	{
-		if (IsValid(Item.Get()) &&
-			IsValid(Item->GetItemDefinition()) &&
-			Item->GetItemDefinition()->CarryType ==
-			EFixedPointCarryType::HandsFull)
-		{
-			return true;
-		}
-	}
+    for (const TObjectPtr<AFixedPointPickup>& Item : Slots)
+    {
+        if (IsValid(Item.Get()) &&
+            IsValid(Item->GetItemDefinition()) &&
+            Item->GetItemDefinition()->CarryType ==
+            EFixedPointCarryType::HandsFull)
+        {
+            return true;
+        }
+    }
 
-	return false;
+    return false;
 }
 
 bool UFixedPointInventoryComponent::CanAcceptPickup(
-	const AFixedPointPickup* Pickup) const
+    const AFixedPointPickup* Pickup) const
 {
-	if (!IsServerOwner() ||
-		!IsValid(Pickup) ||
-		!Pickup->IsAvailableInWorld() ||
-		!IsValid(Pickup->GetItemDefinition()) ||
-		!IsValid(GetCharacterOwner()))
-	{
-		return false;
-	}
+    if (!IsServerOwner() ||
+        !IsValid(Pickup) ||
+        !Pickup->IsAvailableInWorld() ||
+        !IsValid(Pickup->GetItemDefinition()) ||
+        !IsValid(GetCharacterOwner()))
+    {
+        return false;
+    }
 
-	const EFixedPointCarryType CarryType =
-		Pickup->GetItemDefinition()->CarryType;
+    const EFixedPointCarryType CarryType =
+        Pickup->GetItemDefinition()->CarryType;
 
-	if (CarryType == EFixedPointCarryType::WorldCarry)
-	{
-		return !IsValid(WorldCarriedItem.Get()) &&
-			!HasHandsFullItem();
-	}
+    if (CarryType == EFixedPointCarryType::WorldCarry)
+    {
+        return !IsValid(WorldCarriedItem.Get()) &&
+            !HasHandsFullItem();
+    }
 
-	if (FindFreeSlot() == INDEX_NONE)
-	{
-		return false;
-	}
+    if (FindFreeSlot() == INDEX_NONE)
+    {
+        return false;
+    }
 
-	// A pocket item can still be stored when the player's hands are busy.
-	return CarryType == EFixedPointCarryType::Pocketable ||
-		(CarryType == EFixedPointCarryType::HandsFull &&
-			!HasHandsFullItem() &&
-			!IsValid(WorldCarriedItem.Get()));
+    // Free pockets can still receive pocketable items while hands are busy.
+    return CarryType == EFixedPointCarryType::Pocketable ||
+        (CarryType == EFixedPointCarryType::HandsFull &&
+            !HasHandsFullItem() &&
+            !IsValid(WorldCarriedItem.Get()));
 }
 
 bool UFixedPointInventoryComponent::TryAddPickup(
-	AFixedPointPickup* Pickup)
+    AFixedPointPickup* Pickup)
 {
-	if (!CanAcceptPickup(Pickup))
-	{
-		return false;
-	}
+    if (!CanAcceptPickup(Pickup))
+    {
+        return false;
+    }
 
-	AFixedPointCharacter* Character = GetCharacterOwner();
+    AFixedPointCharacter* Character = GetCharacterOwner();
+    const EFixedPointCarryType CarryType =
+        Pickup->GetItemDefinition()->CarryType;
 
-	const EFixedPointCarryType CarryType =
-		Pickup->GetItemDefinition()->CarryType;
+    if (CarryType == EFixedPointCarryType::WorldCarry)
+    {
+        WorldCarriedItem = Pickup;
 
-	if (CarryType == EFixedPointCarryType::WorldCarry)
-	{
-		WorldCarriedItem = Pickup;
+        Pickup->SetCarriedBy(
+            Character,
+            EFixedPointPickupState::WorldCarried);
 
-		Pickup->SetCarriedBy(
-			Character,
-			EFixedPointPickupState::WorldCarried);
+        RefreshEquippedItems();
+    }
+    else
+    {
+        const int32 FreeSlot = FindFreeSlot();
+        Slots[FreeSlot] = Pickup;
 
-		RefreshEquippedItems();
-	}
-	else
-	{
-		const int32 FreeSlot = FindFreeSlot();
-		Slots[FreeSlot] = Pickup;
+        if (CarryType == EFixedPointCarryType::HandsFull ||
+            SelectedSlot == INDEX_NONE)
+        {
+            SelectedSlot = FreeSlot;
+        }
 
-		if (CarryType == EFixedPointCarryType::HandsFull ||
-			SelectedSlot == INDEX_NONE)
-		{
-			SelectedSlot = FreeSlot;
-		}
+        Pickup->SetCarriedBy(
+            Character,
+            EFixedPointPickupState::Stored);
 
-		Pickup->SetCarriedBy(
-			Character,
-			EFixedPointPickupState::Stored);
+        RefreshEquippedItems();
+    }
 
-		RefreshEquippedItems();
-	}
+    RefreshTotalWeightPounds();
 
-	UE_LOG(
-		LogTemp,
-		Log,
-		TEXT("%s picked up %s"),
-		*GetNameSafe(Character),
-		*GetNameSafe(Pickup));
+    UE_LOG(
+        LogTemp,
+        Log,
+        TEXT("%s picked up %s"),
+        *GetNameSafe(Character),
+        *GetNameSafe(Pickup));
 
-	return true;
+    return true;
 }
 
 void UFixedPointInventoryComponent::RefreshEquippedItems()
 {
-	if (!IsServerOwner())
-	{
-		return;
-	}
+    if (!IsServerOwner())
+    {
+        return;
+    }
 
-	const bool bWorldCarry = IsValid(WorldCarriedItem.Get());
+    const bool bWorldCarry = IsValid(WorldCarriedItem.Get());
 
-	for (int32 Index = 0; Index < SlotCount; ++Index)
-	{
-		AFixedPointPickup* Item = GetItemInSlot(Index);
+    for (int32 Index = 0; Index < SlotCount; ++Index)
+    {
+        AFixedPointPickup* Item = GetItemInSlot(Index);
 
-		if (IsValid(Item))
-		{
-			Item->SetCarriedBy(
-				GetCharacterOwner(),
-				!bWorldCarry && Index == SelectedSlot
-				? EFixedPointPickupState::Equipped
-				: EFixedPointPickupState::Stored);
-		}
-	}
+        if (IsValid(Item))
+        {
+            Item->SetCarriedBy(
+                GetCharacterOwner(),
+                !bWorldCarry && Index == SelectedSlot
+                ? EFixedPointPickupState::Equipped
+                : EFixedPointPickupState::Stored);
+        }
+    }
+}
+
+void UFixedPointInventoryComponent::RefreshTotalWeightPounds()
+{
+    if (!IsServerOwner())
+    {
+        return;
+    }
+
+    float NewTotal =
+        GetPickupWeightPounds(WorldCarriedItem.Get());
+
+    for (const TObjectPtr<AFixedPointPickup>& Item : Slots)
+    {
+        NewTotal += GetPickupWeightPounds(Item.Get());
+    }
+
+    TotalWeightPounds = NewTotal;
+
+    UE_LOG(
+        LogTemp,
+        Log,
+        TEXT("%s carries %.1f lb"),
+        *GetNameSafe(GetCharacterOwner()),
+        TotalWeightPounds);
+
+    GetOwner()->ForceNetUpdate();
 }
 
 void UFixedPointInventoryComponent::SelectSlot(int32 Index)
 {
-	if (!IsServerOwner() ||
-		Index < INDEX_NONE ||
-		Index >= SlotCount ||
-		IsValid(WorldCarriedItem.Get()) ||
-		HasHandsFullItem())
-	{
-		return;
-	}
+    if (!IsServerOwner() ||
+        Index < INDEX_NONE ||
+        Index >= SlotCount ||
+        IsValid(WorldCarriedItem.Get()) ||
+        HasHandsFullItem())
+    {
+        return;
+    }
 
-	SelectedSlot = Index;
-	RefreshEquippedItems();
+    SelectedSlot = Index;
+    RefreshEquippedItems();
 
-	if (Index == INDEX_NONE)
-	{
-		UE_LOG(
-			LogTemp,
-			Log,
-			TEXT("%s selected empty hands"),
-			*GetNameSafe(GetCharacterOwner()));
-	}
-	else
-	{
-		UE_LOG(
-			LogTemp,
-			Log,
-			TEXT("%s selected inventory slot %d (%s)"),
-			*GetNameSafe(GetCharacterOwner()),
-			Index + 1,
-			*GetNameSafe(GetItemInSlot(Index)));
-	}
+    if (Index == INDEX_NONE)
+    {
+        UE_LOG(
+            LogTemp,
+            Log,
+            TEXT("%s selected empty hands"),
+            *GetNameSafe(GetCharacterOwner()));
+    }
+    else
+    {
+        UE_LOG(
+            LogTemp,
+            Log,
+            TEXT("%s selected inventory slot %d (%s)"),
+            *GetNameSafe(GetCharacterOwner()),
+            Index + 1,
+            *GetNameSafe(GetItemInSlot(Index)));
+    }
 }
 
 void UFixedPointInventoryComponent::CycleSlot(int32 Direction)
 {
-	if (!IsServerOwner() ||
-		(Direction != -1 && Direction != 1) ||
-		IsValid(WorldCarriedItem.Get()) ||
-		HasHandsFullItem())
-	{
-		return;
-	}
+    if (!IsServerOwner() ||
+        (Direction != -1 && Direction != 1) ||
+        IsValid(WorldCarriedItem.Get()) ||
+        HasHandsFullItem())
+    {
+        return;
+    }
 
-	// INDEX_NONE is one empty-hands stop.
-	// Empty physical slots are skipped.
-	int32 Candidate = SelectedSlot;
+    // Cycle through occupied slots and one empty-hands position.
+    int32 Candidate = SelectedSlot;
 
-	for (int32 Attempt = 0; Attempt <= SlotCount; ++Attempt)
-	{
-		Candidate += Direction;
+    for (int32 Attempt = 0; Attempt <= SlotCount; ++Attempt)
+    {
+        Candidate += Direction;
 
-		if (Candidate >= SlotCount)
-		{
-			Candidate = INDEX_NONE;
-		}
-		else if (Candidate < INDEX_NONE)
-		{
-			Candidate = SlotCount - 1;
-		}
+        if (Candidate >= SlotCount)
+        {
+            Candidate = INDEX_NONE;
+        }
+        else if (Candidate < INDEX_NONE)
+        {
+            Candidate = SlotCount - 1;
+        }
 
-		if (Candidate == INDEX_NONE ||
-			IsValid(GetItemInSlot(Candidate)))
-		{
-			if (Candidate != SelectedSlot)
-			{
-				SelectSlot(Candidate);
-			}
+        if (Candidate == INDEX_NONE ||
+            IsValid(GetItemInSlot(Candidate)))
+        {
+            if (Candidate != SelectedSlot)
+            {
+                SelectSlot(Candidate);
+            }
 
-			return;
-		}
-	}
+            return;
+        }
+    }
 }
+
 void UFixedPointInventoryComponent::UseEquippedItem()
 {
-	if (!IsServerOwner())
-	{
-		return;
-	}
+    if (!IsServerOwner())
+    {
+        return;
+    }
 
-	AFixedPointPickup* Item = IsValid(WorldCarriedItem.Get())
-		? WorldCarriedItem.Get()
-		: GetItemInSlot(SelectedSlot);
+    AFixedPointPickup* Item =
+        IsValid(WorldCarriedItem.Get())
+        ? WorldCarriedItem.Get()
+        : GetItemInSlot(SelectedSlot);
 
-	if (IsValid(Item) &&
-		Item->GetCarrier() == GetCharacterOwner() &&
-		Item->IsEquippedOrWorldCarried())
-	{
-		// The item actor decides what Use does.
-		Item->Use(GetCharacterOwner());
-	}
+    if (IsValid(Item) &&
+        Item->GetCarrier() == GetCharacterOwner() &&
+        Item->IsEquippedOrWorldCarried())
+    {
+        Item->Use(GetCharacterOwner());
+    }
 }
 
 void UFixedPointInventoryComponent::DropPickup(
-	AFixedPointPickup* Pickup)
+    AFixedPointPickup* Pickup)
 {
-	if (!IsValid(Pickup) ||
-		!IsValid(GetCharacterOwner()))
-	{
-		return;
-	}
+    if (!IsValid(Pickup) ||
+        !IsValid(GetCharacterOwner()))
+    {
+        return;
+    }
 
-	AFixedPointCharacter* Character = GetCharacterOwner();
-	const FVector Forward = Character->GetActorForwardVector();
+    AFixedPointCharacter* Character = GetCharacterOwner();
+    const FVector Forward = Character->GetActorForwardVector();
 
-	const FVector TraceStart =
-		Character->GetActorLocation() +
-		Forward * 120.f +
-		FVector(0.f, 0.f, 100.f);
+    const FVector TraceStart =
+        Character->GetActorLocation() +
+        Forward * 120.f +
+        FVector(0.f, 0.f, 100.f);
 
-	const FVector TraceEnd =
-		TraceStart - FVector(0.f, 0.f, 260.f);
+    const FVector TraceEnd =
+        TraceStart - FVector(0.f, 0.f, 260.f);
 
-	FCollisionQueryParams Params(
-		SCENE_QUERY_STAT(DropPickup),
-		false,
-		Character);
+    FCollisionQueryParams Params(
+        SCENE_QUERY_STAT(DropPickup),
+        false,
+        Character);
 
-	Params.AddIgnoredActor(Pickup);
+    Params.AddIgnoredActor(Pickup);
 
-	FHitResult GroundHit;
+    FHitResult GroundHit;
 
-	const bool bFoundGround =
-		GetWorld()->LineTraceSingleByChannel(
-			GroundHit,
-			TraceStart,
-			TraceEnd,
-			ECC_Visibility,
-			Params);
+    const bool bFoundGround =
+        GetWorld()->LineTraceSingleByChannel(
+            GroundHit,
+            TraceStart,
+            TraceEnd,
+            ECC_Visibility,
+            Params);
 
-	const float HalfHeight = Pickup->GetMeshHalfHeight();
+    const float HalfHeight = Pickup->GetMeshHalfHeight();
 
-	const FVector DropLocation = bFoundGround
-		? GroundHit.ImpactPoint +
-		FVector(0.f, 0.f, HalfHeight + 3.f)
-		: Character->GetActorLocation() +
-		Forward * 120.f;
+    const FVector DropLocation = bFoundGround
+        ? GroundHit.ImpactPoint +
+        FVector(0.f, 0.f, HalfHeight + 3.f)
+        : Character->GetActorLocation() + Forward * 120.f;
 
-	Pickup->DropAt(
-		DropLocation,
-		Character->GetActorRotation());
+    Pickup->DropAt(
+        DropLocation,
+        Character->GetActorRotation());
 }
 
 void UFixedPointInventoryComponent::DropHeldItem()
 {
-	if (!IsServerOwner())
-	{
-		return;
-	}
+    if (!IsServerOwner())
+    {
+        return;
+    }
 
-	if (AFixedPointPickup* WorldItem = WorldCarriedItem.Get())
-	{
-		WorldCarriedItem = nullptr;
-		DropPickup(WorldItem);
-		RefreshEquippedItems();
+    if (AFixedPointPickup* WorldItem =
+        WorldCarriedItem.Get())
+    {
+        WorldCarriedItem = nullptr;
 
-		UE_LOG(
-			LogTemp,
-			Log,
-			TEXT("%s dropped world-carried %s"),
-			*GetNameSafe(GetCharacterOwner()),
-			*GetNameSafe(WorldItem));
+        DropPickup(WorldItem);
+        RefreshEquippedItems();
+        RefreshTotalWeightPounds();
 
-		return;
-	}
+        UE_LOG(
+            LogTemp,
+            Log,
+            TEXT("%s dropped world-carried %s"),
+            *GetNameSafe(GetCharacterOwner()),
+            *GetNameSafe(WorldItem));
 
-	AFixedPointPickup* Item =
-		GetItemInSlot(SelectedSlot);
+        return;
+    }
 
-	if (!IsValid(Item))
-	{
-		return;
-	}
+    AFixedPointPickup* Item =
+        GetItemInSlot(SelectedSlot);
 
-	Slots[SelectedSlot] = nullptr;
-	DropPickup(Item);
+    if (!IsValid(Item))
+    {
+        return;
+    }
 
-	UE_LOG(
-		LogTemp,
-		Log,
-		TEXT("%s dropped %s"),
-		*GetNameSafe(GetCharacterOwner()),
-		*GetNameSafe(Item));
+    Slots[SelectedSlot] = nullptr;
+    DropPickup(Item);
 
-	SelectedSlot = INDEX_NONE;
+    UE_LOG(
+        LogTemp,
+        Log,
+        TEXT("%s dropped %s"),
+        *GetNameSafe(GetCharacterOwner()),
+        *GetNameSafe(Item));
 
-	for (int32 Index = 0; Index < SlotCount; ++Index)
-	{
-		if (IsValid(GetItemInSlot(Index)))
-		{
-			SelectedSlot = Index;
-			break;
-		}
-	}
+    SelectedSlot = INDEX_NONE;
 
-	RefreshEquippedItems();
+    for (int32 Index = 0; Index < SlotCount; ++Index)
+    {
+        if (IsValid(GetItemInSlot(Index)))
+        {
+            SelectedSlot = Index;
+            break;
+        }
+    }
+
+    RefreshEquippedItems();
+    RefreshTotalWeightPounds();
 }
 
 void UFixedPointInventoryComponent::HandleOwnerDeath()
 {
-	if (!IsServerOwner())
-	{
-		return;
-	}
+    if (!IsServerOwner())
+    {
+        return;
+    }
 
-	if (AFixedPointPickup* Item = WorldCarriedItem.Get())
-	{
-		WorldCarriedItem = nullptr;
+    if (AFixedPointPickup* Item =
+        WorldCarriedItem.Get())
+    {
+        WorldCarriedItem = nullptr;
 
-		if (IsValid(Item->GetItemDefinition()) &&
-			Item->GetItemDefinition()->bDropOnDeath)
-		{
-			DropPickup(Item);
-		}
-		else
-		{
-			Item->Destroy();
-		}
-	}
+        if (IsValid(Item->GetItemDefinition()) &&
+            Item->GetItemDefinition()->bDropOnDeath)
+        {
+            DropPickup(Item);
+        }
+        else
+        {
+            Item->Destroy();
+        }
+    }
 
-	for (int32 Index = 0; Index < SlotCount; ++Index)
-	{
-		AFixedPointPickup* Item = GetItemInSlot(Index);
-		Slots[Index] = nullptr;
+    for (int32 Index = 0; Index < SlotCount; ++Index)
+    {
+        AFixedPointPickup* Item =
+            GetItemInSlot(Index);
 
-		if (IsValid(Item))
-		{
-			if (IsValid(Item->GetItemDefinition()) &&
-				Item->GetItemDefinition()->bDropOnDeath)
-			{
-				DropPickup(Item);
-			}
-			else
-			{
-				Item->Destroy();
-			}
-		}
-	}
+        Slots[Index] = nullptr;
 
-	SelectedSlot = INDEX_NONE;
+        if (IsValid(Item))
+        {
+            if (IsValid(Item->GetItemDefinition()) &&
+                Item->GetItemDefinition()->bDropOnDeath)
+            {
+                DropPickup(Item);
+            }
+            else
+            {
+                Item->Destroy();
+            }
+        }
+    }
+
+    SelectedSlot = INDEX_NONE;
+    RefreshTotalWeightPounds();
 }
 
 void UFixedPointInventoryComponent::ClearForLoopReset()
 {
-	if (!IsServerOwner())
-	{
-		return;
-	}
+    if (!IsServerOwner())
+    {
+        return;
+    }
 
-	if (IsValid(WorldCarriedItem.Get()))
-	{
-		WorldCarriedItem->Destroy();
-	}
+    if (IsValid(WorldCarriedItem.Get()))
+    {
+        WorldCarriedItem->Destroy();
+    }
 
-	WorldCarriedItem = nullptr;
+    WorldCarriedItem = nullptr;
 
-	for (TObjectPtr<AFixedPointPickup>& Item : Slots)
-	{
-		if (IsValid(Item.Get()))
-		{
-			Item->Destroy();
-		}
+    for (TObjectPtr<AFixedPointPickup>& Item : Slots)
+    {
+        if (IsValid(Item.Get()))
+        {
+            Item->Destroy();
+        }
 
-		Item = nullptr;
-	}
+        Item = nullptr;
+    }
 
-	SelectedSlot = INDEX_NONE;
+    SelectedSlot = INDEX_NONE;
+    RefreshTotalWeightPounds();
 }

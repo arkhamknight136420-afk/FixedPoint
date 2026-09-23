@@ -37,6 +37,26 @@ protected:
 		meta = (ClampMin = "0.0", UIMin = "0.0"))
 	float SprintSpeed = 700.0f;
 
+	// Maximum fraction of movement speed lost to weight.
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Movement|Weight",
+		meta = (
+			ClampMin = "0.0",
+			ClampMax = "0.9",
+			UIMin = "0.0",
+			UIMax = "0.9"))
+	float MaxWeightSlowdownFraction = 0.35f;
+
+	// At this weight, the slowdown reaches half of its maximum.
+	UPROPERTY(
+		EditDefaultsOnly,
+		BlueprintReadOnly,
+		Category = "Movement|Weight",
+		meta = (ClampMin = "1.0", UIMin = "1.0"))
+	float WeightHalfSlowdownPounds = 40.0f;
+
 private:
 
 	bool bWantsToSprint = false;
