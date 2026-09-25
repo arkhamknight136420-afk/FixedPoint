@@ -10,79 +10,65 @@ class AFixedPointPickup;
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class FIXEDPOINT_API UFixedPointInventoryComponent : public UActorComponent
 {
-    GENERATED_BODY()
+	GENERATED_BODY()
 
 public:
-    static constexpr int32 SlotCount = 3;
+	static constexpr int32 SlotCount = 3;
 
-    UFixedPointInventoryComponent();
+	UFixedPointInventoryComponent();
 
-    virtual void GetLifetimeReplicatedProps(
-        TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+	virtual void GetLifetimeReplicatedProps(
+		TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-    UFUNCTION(BlueprintPure, Category = "Inventory")
-    AFixedPointPickup* GetItemInSlot(int32 Index) const;
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	AFixedPointPickup* GetItemInSlot(int32 Index) const;
 
-    UFUNCTION(BlueprintPure, Category = "Inventory")
-    int32 GetSelectedSlot() const
-    {
-        return SelectedSlot;
-    }
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	int32 GetSelectedSlot() const { return SelectedSlot; }
 
-    UFUNCTION(BlueprintPure, Category = "Inventory")
-    AFixedPointPickup* GetWorldCarriedItem() const
-    {
-        return WorldCarriedItem.Get();
-    }
 
-    UFUNCTION(BlueprintPure, Category = "Inventory")
-    float GetTotalWeightPounds() const
-    {
-        return TotalWeightPounds;
-    }
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	AFixedPointPickup* GetWorldCarriedItem() const
+	{
+		return WorldCarriedItem.Get();
+	}
 
-    // State changes occur on the server.
-    bool CanAcceptPickup(const AFixedPointPickup* Pickup) const;
-    bool TryAddPickup(AFixedPointPickup* Pickup);
-    void SelectSlot(int32 Index);
-    void CycleSlot(int32 Direction);
-    void UseEquippedItem();
-    void DropHeldItem();
+	// Called on the server. Client requests enter through the character RPCs.
+	bool CanAcceptPickup(const AFixedPointPickup* Pickup) const;
+	bool TryAddPickup(AFixedPointPickup* Pickup);
+	void SelectSlot(int32 Index);
+	void CycleSlot(int32 Direction);
+	void UseEquippedItem();
+	void DropHeldItem();
 
-    UFUNCTION(BlueprintCallable, Category = "Inventory|Lifecycle")
-    void HandleOwnerDeath();
+	// The future death and time-loop systems call these on the server.
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Lifecycle")
+	void HandleOwnerDeath();
 
-    UFUNCTION(BlueprintCallable, Category = "Inventory|Lifecycle")
-    void ClearForLoopReset();
+	UFUNCTION(BlueprintCallable, Category = "Inventory|Lifecycle")
+	void ClearForLoopReset();
 
 private:
-    UFUNCTION()
-    void OnRep_InventoryState();
+	UFUNCTION()
+	void OnRep_InventoryState();
 
-    UFUNCTION()
-    void OnRep_TotalWeightPounds();
+	bool IsServerOwner() const;
+	int32 FindFreeSlot() const;
+	bool HasHandsFullItem() const;
+	AFixedPointCharacter* GetCharacterOwner() const;
+	void RefreshEquippedItems();
+	void DropPickup(AFixedPointPickup* Pickup);
 
-    bool IsServerOwner() const;
-    int32 FindFreeSlot() const;
-    bool HasHandsFullItem() const;
+	UPROPERTY(ReplicatedUsing = OnRep_InventoryState)
+	TArray<TObjectPtr<AFixedPointPickup>> Slots;
 
-    AFixedPointCharacter* GetCharacterOwner() const;
+	// INDEX_NONE means no slot has been selected.
+	UPROPERTY(ReplicatedUsing = OnRep_InventoryState)
+	int32 SelectedSlot = INDEX_NONE;
 
-    void RefreshEquippedItems();
-    void RefreshTotalWeightPounds();
-    void DropPickup(AFixedPointPickup* Pickup);
+	
 
-    UPROPERTY(ReplicatedUsing = OnRep_InventoryState)
-    TArray<TObjectPtr<AFixedPointPickup>> Slots;
-
-    // INDEX_NONE means empty hands.
-    UPROPERTY(ReplicatedUsing = OnRep_InventoryState)
-    int32 SelectedSlot = INDEX_NONE;
-
-    // Held separately from the three slots.
-    UPROPERTY(ReplicatedUsing = OnRep_InventoryState)
-    TObjectPtr<AFixedPointPickup> WorldCarriedItem = nullptr;
-
-    UPROPERTY(ReplicatedUsing = OnRep_TotalWeightPounds)
-    float TotalWeightPounds = 0.0f;
+	// This actor is held, but never placed in Slots.
+	UPROPERTY(ReplicatedUsing = OnRep_InventoryState)
+	TObjectPtr<AFixedPointPickup> WorldCarriedItem = nullptr;
 };

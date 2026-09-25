@@ -1,6 +1,5 @@
 #include "FixedPointMovementComponent.h"
-#include "../Characters/FixedPointCharacter.h"
-#include "../../Inventory/FixedPointInventoryComponent.h"
+
 #include "GameFramework/Character.h"
 
 
@@ -273,45 +272,12 @@ bool UFixedPointMovementComponent::CanSprint() const
 
 float UFixedPointMovementComponent::GetMaxSpeed() const
 {
-	const float BaseMaxSpeed =
-		IsSprinting()
-		? SprintSpeed
-		: Super::GetMaxSpeed();
-
-	const AFixedPointCharacter* FixedPointCharacter =
-		Cast<AFixedPointCharacter>(CharacterOwner);
-
-	const UFixedPointInventoryComponent* Inventory =
-		IsValid(FixedPointCharacter)
-		? FixedPointCharacter->GetInventoryComponent()
-		: nullptr;
-
-	if (!IsValid(Inventory))
+	if (IsSprinting()) // if we are in fact able to sprint and we want to sprint this frame
 	{
-		return BaseMaxSpeed;
+		return SprintSpeed; // using UEs max speed function return are sprint speed float as that speed
 	}
 
-	const float WeightPounds =
-		FMath::Max(
-			0.0f,
-			Inventory->GetTotalWeightPounds());
-
-	const float HalfWeight =
-		FMath::Max(
-			1.0f,
-			WeightHalfSlowdownPounds);
-
-	const float MaximumSlowdown =
-		FMath::Clamp(
-			MaxWeightSlowdownFraction,
-			0.0f,
-			0.9f);
-
-	const float SpeedMultiplier =
-		1.0f -
-		MaximumSlowdown *
-		WeightPounds /
-		(HalfWeight + WeightPounds);
-
-	return BaseMaxSpeed * SpeedMultiplier;
+	return Super::GetMaxSpeed(); // if were not sprinting use are walk speed which is the normal max speed
 }
+
+
