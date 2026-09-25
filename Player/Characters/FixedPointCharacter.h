@@ -43,18 +43,7 @@ public:
 	
 	void TryInteract();
 
-	// INVENTORY
 
-	void SelectInventorySlot(int32 Index);
-	void CycleInventorySlot(int32 Direction);
-	void UseEquippedItem();
-	void DropHeldItem();
-
-	UFUNCTION(BlueprintPure, Category = "Inventory")
-	UFixedPointInventoryComponent* GetInventoryComponent() const
-	{
-		return InventoryComponent.Get();
-	}
 
 protected:
 	
@@ -96,18 +85,6 @@ protected:
 	UFUNCTION(Server, Reliable)
 	void ServerTryInteract(AActor* RequestedTarget);
 
-	UFUNCTION(Server, Reliable)
-	void ServerSelectInventorySlot(int32 Index);
-
-	UFUNCTION(Server, Reliable)
-	void ServerCycleInventorySlot(int32 Direction);
-
-	UFUNCTION(Server, Reliable)
-	void ServerUseEquippedItem();
-
-	UFUNCTION(Server, Reliable)
-	void ServerDropHeldItem();
-
 	bool IsValidInteractionTarget(const AActor* RequestedTarget) const;
 
 
@@ -139,8 +116,8 @@ protected:
 	
 	void InitializeInventoryComponent();
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Inventory")
-	TObjectPtr<UFixedPointInventoryComponent> InventoryComponent = nullptr;
+	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+	UFixedPointInventoryComponent* InventoryComponent = nullptr;
 
 
 private:
