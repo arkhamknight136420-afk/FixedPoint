@@ -43,7 +43,12 @@ public:
 	
 	void TryInteract();
 
+	//INVENTORY
 
+	UFixedPointInventoryComponent* GetInventoryComponent()
+	{
+		return  InventoryComponent;
+	}
 
 protected:
 	
@@ -116,16 +121,16 @@ protected:
 	
 	void InitializeInventoryComponent();
 
-	UPROPERTY(BlueprintReadOnly, Category = "Inventory")
-	UFixedPointInventoryComponent* InventoryComponent = nullptr;
 
 
 private:
+	//INVENTORY
 
+	UPROPERTY()
+	UFixedPointInventoryComponent* InventoryComponent = nullptr;
 	
 	// CAMERA
 	
-
 
 	void InitializeCameraComponent();
 

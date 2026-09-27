@@ -20,6 +20,8 @@ AFixedPointCharacter::AFixedPointCharacter(
 		ObjectInitializer.SetDefaultSubobjectClass<UFixedPointMovementComponent>(
 			ACharacter::CharacterMovementComponentName))
 {
+	bReplicates = true;
+
 	InitializeMovementComponent();
 
 	InitializeCameraComponent();
@@ -348,6 +350,7 @@ void AFixedPointCharacter::TryInteract()
 
 bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarget) const
 {
+	// is this being executed on the server 
 	if (!HasAuthority())
 	{
 		UE_LOG(LogTemp, Warning, TEXT("Interaction Rejected: Validation was called without Authority."));
@@ -355,6 +358,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 		return false;	
 	}
 
+	//is the interactable valid
 	if (!IsValid(RequestedTarget))
 	{
 		UE_LOG(
@@ -365,6 +369,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 		return false;
 	}
 
+	// are we interacting with ourself
 	if (RequestedTarget == this)
 	{
 		UE_LOG(
@@ -374,6 +379,8 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 		return false;
 	}
+
+	//does the interactable implement the interactable interface
 
 	if (!RequestedTarget->GetClass()->ImplementsInterface(UFixedPointInteractableInterface::StaticClass()))
 	{
@@ -389,6 +396,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 	UWorld* World = GetWorld();
 
+	// are we in a valid world to do a line trace
 	if (!IsValid(World))
 	{
 		UE_LOG(
@@ -398,6 +406,8 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 		return false;
 	}
+
+	// is the player camera valid
 
 	if (!IsValid(PlayerCamera))
 	{
@@ -515,6 +525,8 @@ void AFixedPointCharacter::ServerTryInteract_Implementation(
 	IFixedPointInteractableInterface::Execute_Interact(
 		RequestedTarget,
 		this);
+
+	
 }
 
 //INVENTORY 
