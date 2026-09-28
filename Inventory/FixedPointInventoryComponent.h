@@ -5,7 +5,8 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Structs/FixedPointInventoryStructs.h"
-#include "FixedPointInventoryComponent.generated.h"
+#include "FixedPointInventoryComponent.generated.h" 
+#include "FixedPointItemDefinition.h"
 
 class AFixedPointPickup;
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
@@ -20,6 +21,8 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TryAddItem(AFixedPointPickup* NewItem);
 
+
+
 protected:
 	
 	
@@ -30,19 +33,41 @@ protected:
 
 	TArray <FFixedPointInventoryEntry> InventoryItems;
 
-	AFixedPointPickup* CurrentHeldItem = nullptr;
+	
+
+	
+	void HandleCarryType(const FFixedPointInventoryEntry Entry);
 
 	
 
-	// bool CanPickUpItems()
+	void AttachCurrentHeldItem();
 
 	//bool CanSwapHeldItems()
 
+	//Simply Sets the variable of current held item
+	void SetCurrentHeldItem(UFixedPointItemDefinition* NewHeldItem);
 
+	
+
+
+	UFixedPointItemDefinition* GetCurrentHeldItem() const
+	{
+		return CurrentHeldItem;
+	}
+
+	 UPROPERTY()
+	int MaxInventoryItems = 3;
+	
 
 private:
 
+	UPROPERTY()
 	int MaxinventorySpace = 3;
+
+	UPROPERTY()
+	UFixedPointItemDefinition* CurrentHeldItem = nullptr;
+
+
 	
 
 		

@@ -10,6 +10,8 @@
  * 
  */
 
+class AFixedPointPickup;
+
 UENUM(BlueprintType)
 enum class EFixedPointCarryType : uint8
 {
@@ -30,4 +32,11 @@ public:
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Carrying")
 	EFixedPointCarryType CarryType = EFixedPointCarryType::Pocketable;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item|World")
+	TSubclassOf<AFixedPointPickup> WorldPickupClass;
+
+
+
+
 };
