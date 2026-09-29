@@ -12,6 +12,8 @@
 
 class AFixedPointPickup;
 
+
+
 UENUM(BlueprintType)
 enum class EFixedPointCarryType : uint8
 {

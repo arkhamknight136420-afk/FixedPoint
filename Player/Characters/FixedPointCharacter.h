@@ -12,6 +12,8 @@ class UCapsuleComponent;
 class UPrimitiveComponent;
 class UFixedPointInventoryComponent;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogFixedPointCharacter, Log, All);
+
 UCLASS()
 class FIXEDPOINT_API AFixedPointCharacter : public ACharacter
 {

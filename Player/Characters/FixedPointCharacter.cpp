@@ -12,6 +12,8 @@
 #include "GameFramework/Controller.h"
 #include "../../Inventory/FixedPointInventoryComponent.h"
 
+DEFINE_LOG_CATEGORY(LogFixedPointCharacter);
+
 // LIFE CYCLE
 
 AFixedPointCharacter::AFixedPointCharacter(
@@ -177,8 +179,7 @@ void AFixedPointCharacter::OnInteractionCapsuleBeginOverlap(
 	
 
 
-	UE_LOG(LogTemp, Log, TEXT("Added Valid interaction candidate: %s"),
-		*OtherActor->GetName());
+	UE_LOG(LogFixedPointCharacter, Log, TEXT("Added Valid interaction candidate: %s"),*OtherActor->GetName());
 }
 
 void AFixedPointCharacter::OnInteractionCapsuleEndOverlap(
@@ -199,8 +200,7 @@ void AFixedPointCharacter::OnInteractionCapsuleEndOverlap(
 
 	AvailableInteractables.Remove(OtherActor);
 
-	UE_LOG(LogTemp, Log, TEXT(" Removed Valid Interaction candidate: %s"),
-		*OtherActor->GetName());
+	UE_LOG(LogFixedPointCharacter, Log, TEXT(" Removed Valid Interaction candidate: %s"),*OtherActor->GetName());
 
 
 }
@@ -299,10 +299,7 @@ void AFixedPointCharacter::TryInteract()
 
 	if (!IsValid(FocusedInteractable))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("No interactable selected"));
+		UE_LOG(LogFixedPointCharacter,Warning,TEXT("No interactable selected"));
 
 		return;
 	}
@@ -341,11 +338,7 @@ void AFixedPointCharacter::TryInteract()
 		2.0f,
 		true);
 
-	UE_LOG(
-		LogTemp,
-		Log,
-		TEXT("Selected interactable: %s"),
-		*FocusedInteractable->GetName());
+	UE_LOG(LogFixedPointCharacter,Log,TEXT("Selected interactable: %s"),*FocusedInteractable->GetName());
 }
 
 bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarget) const
@@ -353,7 +346,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 	// is this being executed on the server 
 	if (!HasAuthority())
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Interaction Rejected: Validation was called without Authority."));
+		UE_LOG(LogFixedPointCharacter, Warning, TEXT("Interaction Rejected: Validation was called without Authority."));
 
 		return false;	
 	}
@@ -361,10 +354,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 	//is the interactable valid
 	if (!IsValid(RequestedTarget))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Interaction rejected: requested target is invalid."));
+		UE_LOG(LogFixedPointCharacter, Warning, TEXT("Interaction rejected: requested target is invalid."));
 
 		return false;
 	}
@@ -372,10 +362,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 	// are we interacting with ourself
 	if (RequestedTarget == this)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Interaction rejected: character targeted itself."));
+		UE_LOG(LogFixedPointCharacter,Warning,TEXT("Interaction rejected: character targeted itself."));
 
 		return false;
 	}
@@ -384,12 +371,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 	if (!RequestedTarget->GetClass()->ImplementsInterface(UFixedPointInteractableInterface::StaticClass()))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT(
-				"Interaction rejected: %s does not implement the interaction interface."),
-			*GetNameSafe(RequestedTarget));
+		UE_LOG(LogFixedPointCharacter,Warning,TEXT("Interaction rejected: %s does not implement the interaction interface."),*GetNameSafe(RequestedTarget));
 
 		return false;
 	}
@@ -399,10 +381,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 	// are we in a valid world to do a line trace
 	if (!IsValid(World))
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT("Interaction rejected: server world is invalid."));
+		UE_LOG(LogFixedPointCharacter,Warning,TEXT("Interaction rejected: server world is invalid."));
 
 		return false;
 	}
@@ -411,7 +390,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 	if (!IsValid(PlayerCamera))
 	{
-		UE_LOG(LogTemp, Warning, TEXT("Interaction rejected: PlayerCamera is invalid."));
+		UE_LOG(LogFixedPointCharacter, Warning, TEXT("Interaction rejected: PlayerCamera is invalid."));
 
 		return false;
 
@@ -443,14 +422,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 	if (DistanceSquared > MaxDistanceSquared) // return because its to far away to interact with
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT(
-				"Interaction rejected: %s is %.1f units away; maximum is %.1f."),
-			*GetNameSafe(RequestedTarget),
-			FMath::Sqrt(DistanceSquared),
-			MaxInteractionDistance);
+		UE_LOG(LogFixedPointCharacter,Warning,TEXT("Interaction rejected: %s is %.1f units away; maximum is %.1f."),*GetNameSafe(RequestedTarget),FMath::Sqrt(DistanceSquared),MaxInteractionDistance);
 
 		return false;
 
@@ -462,14 +434,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 	if (AimAlignment < MinimumInteractionAlignment) // if were not rotated far enough towards the object were trying to interact with
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT(
-				"Interaction rejected: %s has alignment %.2f; minimum is %.2f."),
-			*GetNameSafe(RequestedTarget),
-			AimAlignment,
-			MinimumInteractionAlignment);
+		UE_LOG(LogFixedPointCharacter,Warning,TEXT(	"Interaction rejected: %s has alignment %.2f; minimum is %.2f."),*GetNameSafe(RequestedTarget),AimAlignment,	MinimumInteractionAlignment);
 
 		return false;
 	}
@@ -489,13 +454,7 @@ bool AFixedPointCharacter::IsValidInteractionTarget(const AActor* RequestedTarge
 
 	if (bHitSomething && HitResult.GetActor() != RequestedTarget)
 	{
-		UE_LOG(
-			LogTemp,
-			Warning,
-			TEXT(
-				"Interaction rejected: %s blocks visibility to %s."),
-			*GetNameSafe(HitResult.GetActor()),
-			*GetNameSafe(RequestedTarget));
+		UE_LOG(LogFixedPointCharacter,Warning,TEXT(	"Interaction rejected: %s blocks visibility to %s."),*GetNameSafe(HitResult.GetActor()),*GetNameSafe(RequestedTarget));
 
 		return false;
 	}

@@ -5,10 +5,15 @@
 #include "CoreMinimal.h"
 #include "Components/ActorComponent.h"
 #include "Structs/FixedPointInventoryStructs.h"
-#include "FixedPointInventoryComponent.generated.h" 
 #include "FixedPointItemDefinition.h"
+#include "FixedPointInventoryComponent.generated.h" 
+
+
 
 class AFixedPointPickup;
+
+DECLARE_LOG_CATEGORY_EXTERN(LogFixedPointInventory, Log, All);
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class FIXEDPOINT_API UFixedPointInventoryComponent : public UActorComponent
 {
@@ -21,7 +26,9 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TryAddItem(AFixedPointPickup* NewItem);
 
+	UFUNCTION(BlueprintCallable)
 
+	void SelectInventorySlot(int SelectedIndex);
 
 protected:
 	
@@ -57,12 +64,18 @@ protected:
 
 	 UPROPERTY()
 	int MaxInventoryItems = 3;
+
+	int MaxWorldCarryItems = 1;
 	
 
 private:
 
+
+	bool CanSelectInventorySlot() const;
+
+	
 	UPROPERTY()
-	int MaxinventorySpace = 3;
+	bool CanSwapHeldItems = true;
 
 	UPROPERTY()
 	UFixedPointItemDefinition* CurrentHeldItem = nullptr;

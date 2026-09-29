@@ -10,6 +10,8 @@ class AFixedPointCharacter;
 class UFixedPointItemDefinition;
 class UFixedPointInventoryComponent;
 
+DECLARE_LOG_CATEGORY_EXTERN(LogFixedPointPickup, Log, All);
+
 UCLASS()
 class FIXEDPOINT_API AFixedPointPickup
 	: public AActor,

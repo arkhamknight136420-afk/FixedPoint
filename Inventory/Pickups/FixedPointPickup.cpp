@@ -3,6 +3,7 @@
 #include "../../Player/Characters/FixedPointCharacter.h"
 #include"../FixedPointItemDefinition.h"
 
+DEFINE_LOG_CATEGORY(LogFixedPointPickup);
 
 
 // LIFE CYCLE
@@ -28,12 +29,14 @@ bool AFixedPointPickup::CanInteract_Implementation(AFixedPointCharacter* Interac
 	// if the character that interacted with this object is not valid return false
 	if (!IsValid(InteractingCharacter))
 	{
+		UE_LOG(LogFixedPointPickup, Warning, TEXT("CanInteract_Implementation: The interacting character is not valid"));
 		return false;
 	}
 
 	// if the object was already picked up by some one else
 	if (bTaken)
 	{
+		UE_LOG(LogFixedPointPickup, Warning, TEXT("CanInteract_Implementation: The Object were trying to pick up was already taken by something or some one else"));
 		return false;
 	}
 
@@ -43,10 +46,10 @@ bool AFixedPointPickup::CanInteract_Implementation(AFixedPointCharacter* Interac
 
 	if (!InteractingCharacter->GetInventoryComponent())
 	{
+		UE_LOG(LogFixedPointPickup, Warning, TEXT("CanInteract_Implementation: we could not retrieve the inventory component on the interacting character"));
 		return false;
 	}
 
-	UE_LOG(LogTemp, Log, TEXT("Executed can interact default implementation which returns true"));
 	return true;
 
 }
@@ -56,14 +59,23 @@ void AFixedPointPickup::Interact_Implementation(AFixedPointCharacter* Interactin
 {
 	// if this interaction is not being executed on the server and or the objects already been picked up return
 
-	if (!HasAuthority() || bTaken)
+	if (!HasAuthority())
 	{
+		UE_LOG(LogFixedPointPickup, Warning,
+			TEXT("Interact rejected: this pickup is not running on the server"));
+		return;
+	}
+
+	if (bTaken)
+	{
+		UE_LOG(LogFixedPointPickup, Warning,
+			TEXT("Interact rejected: this pickup was already taken"));
 		return;
 	}
 
 	InventoryComponent = InteractingCharacter->GetInventoryComponent();
 
-	UE_LOG(LogTemp, Log, TEXT("Executed interact default implementation so something would be interacted with here"));
+	UE_LOG(LogFixedPointPickup, Log, TEXT("Interact_Implementation: Calling TryAddItem() "));
 	
 	InventoryComponent->TryAddItem(this);
 
@@ -80,6 +92,7 @@ bool AFixedPointPickup::TryClaim()
 	{
 		return false;
 	}
+	UE_LOG(LogFixedPointPickup, Log, TEXT("TryClaim: Setting bTaken to true claiming this item"));
 
 	bTaken = true;
 	return true;
