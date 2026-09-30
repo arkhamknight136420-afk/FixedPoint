@@ -98,6 +98,21 @@ bool AFixedPointCharacter::IsSprintRequested() const
 	return MovementComponent->WantsToSprint();
 }
 
+void AFixedPointCharacter::StartJump()
+{
+	Jump();
+}
+
+void AFixedPointCharacter::StopJump()
+{
+	StopJumping();
+}
+
+void AFixedPointCharacter::StartCrouch()
+{
+	Crouch();
+}
+
 void AFixedPointCharacter::ToggleCrouch()
 {
 	if (IsCrouched())
@@ -109,6 +124,81 @@ void AFixedPointCharacter::ToggleCrouch()
 		Crouch();
 	}
 }
+
+void AFixedPointCharacter::StopCrouch()
+{
+	UnCrouch();
+}
+
+void AFixedPointCharacter::SelectInventorySlot1()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->ServerSelectInventorySlot(0);
+	}
+	
+}
+
+void AFixedPointCharacter::SelectInventorySlot2()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->ServerSelectInventorySlot(1);
+	}
+}
+
+void AFixedPointCharacter::SelectInventorySlot3()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->ServerSelectInventorySlot(2);
+	}
+}
+
+void AFixedPointCharacter::SelectNextInventorySlot()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->CycleNextInventorySlot();
+	}
+}
+
+void AFixedPointCharacter::SelectPreviousInventorySlot()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->CyclePreviousInventorySlot();
+	}
+}
+
+void AFixedPointCharacter::DropItemStarted()
+{
+
+}
+
+void AFixedPointCharacter::StartUseItemPrimary()
+{
+
+}
+
+void AFixedPointCharacter::StopUseItemPrimary()
+{
+
+}
+
+void AFixedPointCharacter::StartUseItemSecondary()
+{
+
+}
+
+void AFixedPointCharacter::StopUseItemSecondary()
+{
+
+}
+
+
+
+
 
 // INTERACTION
 
@@ -290,7 +380,6 @@ AActor* AFixedPointCharacter::FindMostAlignedInteractableActor() const
 
 	return BestActor;
 }
-
 
 void AFixedPointCharacter::TryInteract()
 {
@@ -494,8 +583,6 @@ void AFixedPointCharacter::InitializeInventoryComponent()
 {
 	InventoryComponent = CreateDefaultSubobject<UFixedPointInventoryComponent>(TEXT("Inventory Component"));
 }
-
-
 
 // CAMERA
 

@@ -67,6 +67,36 @@ protected:
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
 	TObjectPtr<UInputAction> IA_Interact = nullptr;
 
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_DropItem = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_InventorySlot1 = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_InventorySlot2 = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_InventorySlot3 = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_NextInventorySlot = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_PreviousInventorySlot = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_UseItemPrimary = nullptr;
+
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Input|Actions")
+	TObjectPtr<UInputAction> IA_UseItemSecondary = nullptr;
+
+
+
+
+
+
+
 	//=====================================================
 	// INPUT PREFERENCES
 	//=====================================================
@@ -83,19 +113,43 @@ protected:
 	// INPUT HANDLERS
 	//=====================================================
 
-	void HandleLook(const FInputActionValue& Value);
-	void HandleMove(const FInputActionValue& Value);
+	void Input_Look(const FInputActionValue& Value);
+	void InputMove(const FInputActionValue& Value);
 
-	void HandleJumpStarted();
-	void HandleJumpEnded();
+	void Input_Jump_Started();
+	void Input_Jump_Ended();
 
-	void HandleSprintStarted();
-	void HandleSprintEnded();
+	void Input_Sprint_Started();
+	void Input_Sprint_Ended();
 
-	void HandleCrouchStarted();
-	void HandleCrouchEnded();
+	void Input_Crouch_Started();
+	void Input_Crouch_Ended();
 
-	void HandleInteract();
+	void Input_Interact();
+
+	void Input_InventorySlot1();
+
+	void Input_InventorySlot2();
+
+	void Input_InventorySlot3();
+
+	void Input_NextInventorySlot();
+
+	void Input_PreviousInventorySlot();
+
+	void Input_DropItem_Started();
+
+	void Input_UseItemPrimary_Started();
+	void Input_UseItemPrimary_Ended();
+
+
+	void Input_UseItemSecondary_Started();
+	void Input_UseItemSecondary_Ended();
+
+
+
+
+
 
 private:
 	AFixedPointCharacter* GetFixedPointCharacter() const;

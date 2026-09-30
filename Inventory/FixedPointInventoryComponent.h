@@ -26,9 +26,18 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TryAddItem(AFixedPointPickup* NewItem);
 
-	UFUNCTION(BlueprintCallable)
+	UFUNCTION(Server, Reliable)
+	void ServerSelectInventorySlot(int32 SelectedIndex);
 
-	void SelectInventorySlot(int SelectedIndex);
+	UFUNCTION(BlueprintCallable)
+	void CycleNextInventorySlot();
+
+	UFUNCTION(BlueprintCallable)
+	void CyclePreviousInventorySlot();
+
+	
+
+	
 
 protected:
 	
@@ -61,19 +70,24 @@ protected:
 	{
 		return CurrentHeldItem;
 	}
-
+	 // DO NOT SET TO LESS THEN ONE
 	 UPROPERTY()
 	int MaxInventoryItems = 3;
 
-	int MaxWorldCarryItems = 1;
+	UPROPERTY()
+	int MaxWorldCarryItems =  1;
+
+
 	
 
 private:
 
 
-	bool CanSelectInventorySlot() const;
+	bool CanChangeInventorySelection() const;
 
-	
+	UPROPERTY()
+	int CurrentInventoryIndex = 9999;
+
 	UPROPERTY()
 	bool CanSwapHeldItems = true;
 

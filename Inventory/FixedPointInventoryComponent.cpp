@@ -126,7 +126,7 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 			{
 				
 				SetCurrentHeldItem(ItemDefinition);
-
+ 
 				CanSwapHeldItems = true;
 
 				//AttachCurrentHeldItem();
@@ -210,6 +210,8 @@ void UFixedPointInventoryComponent::SetCurrentHeldItem(UFixedPointItemDefinition
 
 	UE_LOG(LogFixedPointInventory, Log, TEXT("SetCurrentHeldItem: Current Held item is now: %s"), *CurrentHeldItem->GetName())
 
+	UE_LOG(LogFixedPointInventory, Log, TEXT("CurrentInventoryIndex: %d"), CurrentInventoryIndex)
+
 
 
 }
@@ -227,36 +229,120 @@ void UFixedPointInventoryComponent::AttachCurrentHeldItem()
 	//etc etc
 }
 
-void UFixedPointInventoryComponent::SelectInventorySlot(int SelectedIndex)
+void UFixedPointInventoryComponent::ServerSelectInventorySlot(int32 SelectedIndex)
 {
-	if (SelectedIndex < 0 || SelectedIndex > 2)
+	// Make sure this slot actually exists in the current inventory.
+	if (!InventoryItems.IsValidIndex(SelectedIndex))
 	{
-		UE_LOG(LogFixedPointInventory, Warning, TEXT("Passed in Inventory index is less then zero or greater then 2"))
+		UE_LOG(LogFixedPointInventory, Warning,
+			TEXT("Invalid index: %d | Num: %d | Authority: %s"),
+			SelectedIndex,
+			InventoryItems.Num(),
+			GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+
 		return;
 	}
 
-	if (!CanSelectInventorySlot())
+	if (!CanChangeInventorySelection())
 	{
 		return;
 	}
-
 
 	FFixedPointInventoryEntry ItemEntry = InventoryItems[SelectedIndex];
 
-	UFixedPointItemDefinition* ItemOneDefinition = ItemEntry.Definition;
+	UFixedPointItemDefinition* ItemDefinition = ItemEntry.Definition;
 
-	SetCurrentHeldItem(ItemOneDefinition);
+	if (!IsValid(ItemDefinition))
+	{
+		return;
+	}
 
-	// set current held item
-	// AttachCurrentHeldItem()
+	SetCurrentHeldItem(ItemDefinition);
+
+	CurrentInventoryIndex = SelectedIndex;
 }
 
-bool UFixedPointInventoryComponent::CanSelectInventorySlot() const
+void UFixedPointInventoryComponent::CycleNextInventorySlot()
+{
+	if (!CanChangeInventorySelection())
+	{
+		return;
+	}
+
+	if (InventoryItems.Num() == 0)
+	{
+		return;
+	}
+
+	// If we're at the last item, cycle back to the first.
+	if (CurrentInventoryIndex + 1 >= InventoryItems.Num())
+	{
+		CurrentInventoryIndex = 0;
+	}
+	else
+	{
+		CurrentInventoryIndex += 1;
+	}
+
+	FFixedPointInventoryEntry ItemEntry = InventoryItems[CurrentInventoryIndex];
+
+	UFixedPointItemDefinition* ItemDefinition = ItemEntry.Definition;
+
+	if (!IsValid(ItemDefinition))
+	{
+		return;
+	}
+
+	SetCurrentHeldItem(ItemDefinition);
+}
+
+
+void UFixedPointInventoryComponent::CyclePreviousInventorySlot()
+{
+	if (!CanChangeInventorySelection())
+	{
+		return;
+	}
+
+	if (InventoryItems.Num() == 0)
+	{
+		return;
+	}
+
+	// If we're at the first item, cycle to the last.
+	if (CurrentInventoryIndex - 1 < 0)
+	{
+		CurrentInventoryIndex = InventoryItems.Num() - 1;
+	}
+	else
+	{
+		CurrentInventoryIndex -= 1;
+	}
+
+	FFixedPointInventoryEntry ItemEntry = InventoryItems[CurrentInventoryIndex];
+
+	UFixedPointItemDefinition* ItemDefinition = ItemEntry.Definition;
+
+	if (!IsValid(ItemDefinition))
+	{
+		return;
+	}
+
+	SetCurrentHeldItem(ItemDefinition);
+}
+
+bool UFixedPointInventoryComponent::CanChangeInventorySelection() const
 {
 	if (!CanSwapHeldItems)
 	{
 		UE_LOG(LogFixedPointInventory, Warning, TEXT("CanSelectInventorySlot: Can not swap Held items "))
 
+		return false;
+	}
+
+	if (InventoryItems.Num() == 0)
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("CanSelectInventorySlot: There is no Items in are inventory "))
 		return false;
 	}
 

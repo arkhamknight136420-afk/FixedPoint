@@ -38,7 +38,33 @@ public:
 	void SetSprintRequested(bool bRequested);
 	bool IsSprintRequested() const;
 
+	void StartJump();
+	void StopJump();
+
+	void StartCrouch();
+	void StopCrouch();
+
+	void SelectInventorySlot1();
+	void SelectInventorySlot2();
+	void SelectInventorySlot3();
+
+	void SelectNextInventorySlot();
+	void SelectPreviousInventorySlot();
+
+	void DropItemStarted();
+
+	void StartUseItemPrimary();
+	void StopUseItemPrimary();
+
+	void StartUseItemSecondary();
+	void StopUseItemSecondary();
+
+
+
 	void ToggleCrouch();
+
+
+
 
 	
 	// INTERACTION
@@ -57,6 +83,10 @@ protected:
 	// MOVEMENT
 	
 	void InitializeMovementComponent();
+
+	//ACTIONS
+
+
 
 
 	
@@ -123,6 +153,14 @@ protected:
 	
 	void InitializeInventoryComponent();
 
+	
+
+
+	// CAMERA
+
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera",
+		meta = (AllowPrivateAccess = "true"))
+	TObjectPtr<UCameraComponent> PlayerCamera = nullptr;
 
 
 private:
@@ -137,9 +175,6 @@ private:
 	void InitializeCameraComponent();
 
 
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = "Camera",
-		meta = (AllowPrivateAccess = "true"))
-	TObjectPtr<UCameraComponent> PlayerCamera = nullptr;
 
 
 
