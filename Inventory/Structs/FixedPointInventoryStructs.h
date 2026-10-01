@@ -6,7 +6,7 @@
 #include "CoreMinimal.h"
 #include "FixedPointInventoryStructs.generated.h"
 
-
+ 
 class UFixedPointItemDefinition;
 
 USTRUCT(BlueprintType)

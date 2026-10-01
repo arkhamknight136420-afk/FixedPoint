@@ -7,8 +7,6 @@
 #include "../Inventory/FixedPointItemDefinition.h"
 #include "Structs/FixedPointInventoryStructs.h"
 
-
-
 DEFINE_LOG_CATEGORY(LogFixedPointInventory);
 
 void UFixedPointInventoryComponent::TryAddItem(AFixedPointPickup* NewItem)
@@ -110,6 +108,87 @@ void UFixedPointInventoryComponent::TryAddItem(AFixedPointPickup* NewItem)
 
 }
 
+bool UFixedPointInventoryComponent::CanDropItem()
+{
+	// if this is not being executed on the server return false
+	if (!GetOwner()->HasAuthority())
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("CanDropItem() | Can not Drop item because we are executing on a client not the server"));
+		return false;
+	}
+
+	// if the current held item is not valid return false
+	if (!IsValid(CurrentHeldItem))
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("CanDropItem() | Can not Drop item because Current Held Item Is not valid"));
+		return false;
+	}
+	// if the world pick up class on the current held item is not valid
+	if (!IsValid(CurrentHeldItem->WorldPickupClass))
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("CanDropItem() | Can not drop item because the WorldPickupClass is not valid"));
+		return false;
+	}
+
+
+	return true;
+
+
+}
+
+void UFixedPointInventoryComponent::DropItem()
+{
+	if (!CanDropItem())
+	{
+		return;
+	}
+
+	UWorld* CurrentWorld = GetWorld();
+
+	TSubclassOf <AFixedPointPickup> DroppedActorClass = CurrentHeldItem->WorldPickupClass;
+
+	FTransform SpawnLocation = GetOwner()->GetActorTransform();
+
+	FActorSpawnParameters SpawnParameters;
+
+	SpawnParameters.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+
+
+
+
+	if (!IsValid(CurrentWorld))
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("DropItem() | Could not Spawn the item trying to be dropped because the current world were in is not valid"))
+	}
+
+	AFixedPointPickup* SpawnedActor = CurrentWorld->SpawnActor <AFixedPointPickup>(DroppedActorClass, SpawnLocation,SpawnParameters);
+
+	if (!IsValid(SpawnedActor))
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("DropItem() | Item We Spawned is not valid"))
+	}
+
+	UE_LOG(LogFixedPointInventory, Log, TEXT("DropItem() | Item Spawned Succesfully "))
+
+	FFixedPointInventoryEntry Entry = InventoryItems[CurrentInventoryIndex];
+
+	// probably check if entry is valid somehow 
+
+
+	SpawnedActor->UpdateItemState(Entry);
+
+
+	InventoryItems[CurrentInventoryIndex] = FFixedPointInventoryEntry{};
+
+	CurrentInventoryIndex = INDEX_NONE;
+
+	CurrentHeldItem = nullptr;
+
+
+	
+
+}
+
 void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEntry Entry)
 {
 	UFixedPointItemDefinition* ItemDefinition = Entry.Definition;
@@ -122,6 +201,8 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 		{
 			UE_LOG(LogFixedPointInventory, Log, TEXT("Enum Switch Pocketable Code Executing"))
 
+				// if we are not currently holding an item
+
 			if (!CurrentHeldItem)
 			{
 				
@@ -129,14 +210,13 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
  
 				CanSwapHeldItems = true;
 
-				//AttachCurrentHeldItem();
+				//PlayerCharacter->AttachCurrentHeldItem();
 
 			}
 
+			//PlayerCharacter->ApplyWeightChange();
 		
-			//Pick up Pocketable: yes
-			//Pick up HandsFull: yes
-			//Pick up WorldCarry: yes
+			
 
 		
 			
@@ -149,15 +229,15 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 		case EFixedPointCarryType::HandsFull:
 		{
 			UE_LOG(LogFixedPointInventory, Log, TEXT("Enum Switch HandsFull Code Executing"))
-			//Pick up Pocketable: yes
-			//Pick up HandsFull: no
-			//Pick up WorldCarry: no
 
-			
 			SetCurrentHeldItem(ItemDefinition);
 
 			CanSwapHeldItems = false;
-			//AttachCurrentHeldItem();
+
+			//PlayerCharacter->AttachCurrentHeldItem();
+
+			//PlayerCharacter->ApplyWeightChange();
+
 
 			
 			
@@ -173,13 +253,14 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 
 			SetCurrentHeldItem(ItemDefinition);
 
-			//Pick up Pocketable: no
-			//Pick up HandsFull: no
-			//Pick up WorldCarry: no
-			
-			//AttachCurrentHeldItem();
-			//BlockAllInteraction(); POSSIBLY NOT GUARANTEED
 			CanSwapHeldItems = false;
+
+			//PlayerCharacter->AttachCurrentHeldItem();
+
+			//PlayerCharacter->ApplyWeightChange();
+
+
+			UE_LOG(LogFixedPointInventory, Log, TEXT(" HandleCarryType World Carry: Current Inventory Index is: %d"), CurrentInventoryIndex);
 
 			
 		
@@ -210,35 +291,20 @@ void UFixedPointInventoryComponent::SetCurrentHeldItem(UFixedPointItemDefinition
 
 	UE_LOG(LogFixedPointInventory, Log, TEXT("SetCurrentHeldItem: Current Held item is now: %s"), *CurrentHeldItem->GetName())
 
-	UE_LOG(LogFixedPointInventory, Log, TEXT("CurrentInventoryIndex: %d"), CurrentInventoryIndex)
 
 
 
 }
 
-void UFixedPointInventoryComponent::AttachCurrentHeldItem()
-{
-	if (!IsValid(CurrentHeldItem))
-	{
-		return;
-	}
-
-	//spawn actor 
-	// attach to hand
-	//set transform
-	//etc etc
-}
-
-void UFixedPointInventoryComponent::ServerSelectInventorySlot(int32 SelectedIndex)
+void UFixedPointInventoryComponent::SelectInventorySlot(int32 SelectedIndex)
 {
 	// Make sure this slot actually exists in the current inventory.
 	if (!InventoryItems.IsValidIndex(SelectedIndex))
 	{
 		UE_LOG(LogFixedPointInventory, Warning,
-			TEXT("Invalid index: %d | Num: %d | Authority: %s"),
-			SelectedIndex,
-			InventoryItems.Num(),
-			GetOwner()->HasAuthority() ? TEXT("Server") : TEXT("Client"));
+			TEXT("SelectInventorySlot: Invalid SelectedIndex Meaning there is nothing stored in the Array at the index of: %d"),
+			SelectedIndex)
+			
 
 		return;
 	}
@@ -254,12 +320,17 @@ void UFixedPointInventoryComponent::ServerSelectInventorySlot(int32 SelectedInde
 
 	if (!IsValid(ItemDefinition))
 	{
+		UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot() | Item Definition is Invalid"));
 		return;
 	}
 
 	SetCurrentHeldItem(ItemDefinition);
 
 	CurrentInventoryIndex = SelectedIndex;
+
+	UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot: Current Inventory Index is: %d"), CurrentInventoryIndex);
+
+	//PlayerCharacter->AttachCurrentHeldItem();
 }
 
 void UFixedPointInventoryComponent::CycleNextInventorySlot()
@@ -294,8 +365,11 @@ void UFixedPointInventoryComponent::CycleNextInventorySlot()
 	}
 
 	SetCurrentHeldItem(ItemDefinition);
-}
 
+	UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot: Current Inventory Index is: %d"), CurrentInventoryIndex);
+
+	//PlayerCharacter->AttachCurrentHeldItem();
+}
 
 void UFixedPointInventoryComponent::CyclePreviousInventorySlot()
 {
@@ -329,6 +403,10 @@ void UFixedPointInventoryComponent::CyclePreviousInventorySlot()
 	}
 
 	SetCurrentHeldItem(ItemDefinition);
+
+	UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot: Current Inventory Index is: %d"), CurrentInventoryIndex);
+
+	//PlayerCharacter->AttachCurrentHeldItem();
 }
 
 bool UFixedPointInventoryComponent::CanChangeInventorySelection() const

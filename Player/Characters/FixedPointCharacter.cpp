@@ -134,16 +134,15 @@ void AFixedPointCharacter::SelectInventorySlot1()
 {
 	if (IsValid(InventoryComponent))
 	{
-		InventoryComponent->ServerSelectInventorySlot(0);
+		ServerSelectInventorySlot(0);
 	}
-	
 }
 
 void AFixedPointCharacter::SelectInventorySlot2()
 {
 	if (IsValid(InventoryComponent))
 	{
-		InventoryComponent->ServerSelectInventorySlot(1);
+		ServerSelectInventorySlot(1);
 	}
 }
 
@@ -151,11 +150,35 @@ void AFixedPointCharacter::SelectInventorySlot3()
 {
 	if (IsValid(InventoryComponent))
 	{
-		InventoryComponent->ServerSelectInventorySlot(2);
+		ServerSelectInventorySlot(2);
 	}
 }
 
+void AFixedPointCharacter::ServerSelectInventorySlot_Implementation(int32 SelectedIndex)
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->SelectInventorySlot(SelectedIndex);
+	}
+}
+
+
 void AFixedPointCharacter::SelectNextInventorySlot()
+{
+	if (IsValid(InventoryComponent))
+	{
+		ServerCycleNextInventorySlot();
+	}
+}
+
+void AFixedPointCharacter::SelectPreviousInventorySlot()
+{
+	if (IsValid(InventoryComponent))
+	{
+		ServerCyclePreviousInventorySlot();
+	}
+}
+void AFixedPointCharacter::ServerCycleNextInventorySlot_Implementation()
 {
 	if (IsValid(InventoryComponent))
 	{
@@ -163,7 +186,7 @@ void AFixedPointCharacter::SelectNextInventorySlot()
 	}
 }
 
-void AFixedPointCharacter::SelectPreviousInventorySlot()
+void AFixedPointCharacter::ServerCyclePreviousInventorySlot_Implementation()
 {
 	if (IsValid(InventoryComponent))
 	{
@@ -173,7 +196,18 @@ void AFixedPointCharacter::SelectPreviousInventorySlot()
 
 void AFixedPointCharacter::DropItemStarted()
 {
+	if (IsValid(InventoryComponent))
+	{
+		ServerDropItem();
+	}
+}
 
+void AFixedPointCharacter::ServerDropItem_Implementation()
+{
+	if (IsValid(InventoryComponent))
+	{
+		InventoryComponent->DropItem();
+	}
 }
 
 void AFixedPointCharacter::StartUseItemPrimary()

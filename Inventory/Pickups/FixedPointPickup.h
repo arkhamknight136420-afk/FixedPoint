@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "../../Interfaces/FixedPointInteractableInterface.h"
 #include "StructUtils/InstancedStruct.h"
+#include "../Structs/FixedPointInventoryStructs.h"
 #include "FixedPointPickup.generated.h"
 
 class AFixedPointCharacter;
@@ -34,6 +35,9 @@ public:
 	//STRUCT
 
 	virtual FInstancedStruct CaptureItemState() const;
+
+	virtual void UpdateItemState(FFixedPointInventoryEntry Entry);
+
 
 	//GETTERS
 	UFixedPointItemDefinition* GetItemDefinition()

@@ -1,7 +1,8 @@
 #include "FixedPointPickup.h"
 #include "../../Inventory/FixedPointInventoryComponent.h"
 #include "../../Player/Characters/FixedPointCharacter.h"
-#include"../FixedPointItemDefinition.h"
+#include "../FixedPointItemDefinition.h"
+#include "../Structs/FixedPointInventoryStructs.h"
 
 DEFINE_LOG_CATEGORY(LogFixedPointPickup);
 
@@ -104,3 +105,9 @@ FInstancedStruct AFixedPointPickup::CaptureItemState() const
 	return FInstancedStruct{};
 }
 
+void AFixedPointPickup::UpdateItemState(FFixedPointInventoryEntry Entry)
+{
+	UE_LOG(LogFixedPointPickup, Warning, TEXT("UpdateItemState() | Base class is not meant to be used each class must implement its own definition"));
+
+	return;
+}

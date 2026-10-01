@@ -26,8 +26,13 @@ public:
 	UFUNCTION(BlueprintCallable)
 	void TryAddItem(AFixedPointPickup* NewItem);
 
-	UFUNCTION(Server, Reliable)
-	void ServerSelectInventorySlot(int32 SelectedIndex);
+	
+
+	UFUNCTION(BlueprintCallable)
+	void DropItem();
+
+	UFUNCTION(BlueprintCallable)
+	void SelectInventorySlot(int32 SelectedIndex);
 
 	UFUNCTION(BlueprintCallable)
 	void CycleNextInventorySlot();
@@ -55,10 +60,11 @@ protected:
 	void HandleCarryType(const FFixedPointInventoryEntry Entry);
 
 	
+	UFUNCTION(BlueprintCallable)
+	bool CanDropItem();
+	
 
-	void AttachCurrentHeldItem();
-
-	//bool CanSwapHeldItems()
+	
 
 	//Simply Sets the variable of current held item
 	void SetCurrentHeldItem(UFixedPointItemDefinition* NewHeldItem);
@@ -86,7 +92,7 @@ private:
 	bool CanChangeInventorySelection() const;
 
 	UPROPERTY()
-	int CurrentInventoryIndex = 9999;
+	int CurrentInventoryIndex = INDEX_NONE;
 
 	UPROPERTY()
 	bool CanSwapHeldItems = true;

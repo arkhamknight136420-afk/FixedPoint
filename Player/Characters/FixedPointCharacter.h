@@ -153,6 +153,18 @@ protected:
 	
 	void InitializeInventoryComponent();
 
+	UFUNCTION(Server, Reliable)
+	void ServerSelectInventorySlot(int32 SelectedIndex);
+
+	UFUNCTION(Server, Reliable)
+	void ServerCycleNextInventorySlot();
+
+	UFUNCTION(Server, Reliable)
+	void ServerCyclePreviousInventorySlot();
+
+	UFUNCTION(Server, Reliable)
+	void ServerDropItem();
+
 	
 
 
