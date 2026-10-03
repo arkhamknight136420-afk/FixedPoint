@@ -4,6 +4,8 @@
 #include "GameFramework/CharacterMovementComponent.h"
 #include "FixedPointMovementComponent.generated.h"
 UCLASS()
+
+
 class FIXEDPOINT_API UFixedPointMovementComponent : public UCharacterMovementComponent
 {
 	GENERATED_BODY()
@@ -40,6 +42,8 @@ protected:
 private:
 
 	bool bWantsToSprint = false;
+
+
 
 	
 

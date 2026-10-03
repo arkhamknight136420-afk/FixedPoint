@@ -2,7 +2,7 @@
 
 
 #include "FixedPointFlashlight.h"
-
+ 
 
 FInstancedStruct AFixedPointFlashlight::CaptureItemState() const
 {

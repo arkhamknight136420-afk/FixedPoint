@@ -29,12 +29,15 @@ class FIXEDPOINT_API UFixedPointItemDefinition : public UPrimaryDataAsset
 
 public:
 
+	/*The weight of this item in lbs*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Carrying")
 	float Weight = 0.0f;
 
+	/*The carry type of this item Definining its inventory behaviour*/
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Item|Carrying")
 	EFixedPointCarryType CarryType = EFixedPointCarryType::Pocketable;
 
+	/*The Physical Item Blueprint Spawned Into The World*/
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Item|World")
 	TSubclassOf<AFixedPointPickup> WorldPickupClass;
 

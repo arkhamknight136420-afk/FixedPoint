@@ -11,6 +11,7 @@
 
 
 class AFixedPointPickup;
+class AFixedPointCharacter;
 
 DECLARE_LOG_CATEGORY_EXTERN(LogFixedPointInventory, Log, All);
 
@@ -21,7 +22,10 @@ class FIXEDPOINT_API UFixedPointInventoryComponent : public UActorComponent
 
 public:	
 
+	//LIFECYCLE
+	UFixedPointInventoryComponent();
 
+	virtual void BeginPlay() override;
 
 	UFUNCTION(BlueprintCallable)
 	void TryAddItem(AFixedPointPickup* NewItem);
@@ -41,7 +45,10 @@ public:
 	void CyclePreviousInventorySlot();
 
 	
-
+	UFixedPointItemDefinition* GetCurrentHeldItem() const
+	{
+		return CurrentHeldItem;
+	}
 	
 
 protected:
@@ -57,7 +64,9 @@ protected:
 	
 
 	
-	void HandleCarryType(const FFixedPointInventoryEntry Entry);
+	void HandleCarryType(
+		const FFixedPointInventoryEntry Entry,
+		int32 ItemIndex);
 
 	
 	UFUNCTION(BlueprintCallable)
@@ -72,10 +81,7 @@ protected:
 	
 
 
-	UFixedPointItemDefinition* GetCurrentHeldItem() const
-	{
-		return CurrentHeldItem;
-	}
+	
 	 // DO NOT SET TO LESS THEN ONE
 	 UPROPERTY()
 	int MaxInventoryItems = 3;
@@ -99,6 +105,8 @@ private:
 
 	UPROPERTY()
 	UFixedPointItemDefinition* CurrentHeldItem = nullptr;
+
+	AFixedPointCharacter* OwningFixedPointCharacter = nullptr;
 
 
 	

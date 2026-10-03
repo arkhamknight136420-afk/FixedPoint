@@ -32,6 +32,13 @@ public:
 		AFixedPointCharacter* InteractingCharacter) const override;
 
 
+	UFUNCTION(BlueprintCallable)
+	void PickupPrimaryFunction();
+
+	UFUNCTION(BlueprintCallable)
+	void PickupSecondaryFunction();
+
+
 	//STRUCT
 
 	virtual FInstancedStruct CaptureItemState() const;

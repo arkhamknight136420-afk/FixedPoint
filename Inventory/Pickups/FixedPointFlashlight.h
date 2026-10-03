@@ -29,5 +29,9 @@ protected:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Item")
 	bool bOn = false;
 
+
 private:
+
+	
+
 };

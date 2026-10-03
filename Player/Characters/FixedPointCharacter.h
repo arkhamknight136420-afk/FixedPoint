@@ -63,7 +63,14 @@ public:
 
 	void ToggleCrouch();
 
+	// WEIGHT
+	float GetSpeedReductionMultiplier() const
+	{
+		return SpeedReductionMultiplier;
+	}
 
+	UFUNCTION(BlueprintCallable)
+	void ApplyCarryWeight(float AddedWeight);
 
 
 	
@@ -87,7 +94,34 @@ protected:
 	//ACTIONS
 
 
+	//Weight
 
+
+	// The total Weight the player is carrying tallying all there  held items in lbs
+	UPROPERTY(VisibleAnywhere, Category = "Weight")
+	float TotalCarryWeight = 0.f;
+
+	// Maximum movement speed multiplier for slowdown. 1 means movement speed cannot be above 100% of its original value.
+	UPROPERTY(EditDefaultsOnly, Category = "Weight")
+	float MinSpeedReductionMultiplier = 1.f;
+
+	// Minimum movement speed multiplier for slowdown. 0.6 means movement speed cannot fall below 60% of its original value.
+	UPROPERTY(EditDefaultsOnly, Category = "Weight")
+	float MaxSpeedReductionMultiplier = 0.6f;
+
+	// Current movement speed multiplier for slowdown.
+	UPROPERTY(BlueprintReadonly, Category = "Weight")
+	float SpeedReductionMultiplier = 1.f;
+
+	// The minimum amount of additional weight the player is carrying from objects in there inventory
+	UPROPERTY(EditDefaultsOnly, Category = "Weight")
+	float MinCarryWeight = 0.f;
+
+	// The maximum amount of additional weight the player is carrying from objects in there inventory
+	UPROPERTY(EditDefaultsOnly, Category = "Weight")
+	float MaxCarryWeight = 50.f;
+
+	
 
 	
 	// INTERACTION
@@ -190,7 +224,7 @@ private:
 
 
 
-
+	
 	
 	
 

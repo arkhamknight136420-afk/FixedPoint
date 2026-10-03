@@ -6,8 +6,30 @@
 #include "GameFramework/Actor.h"
 #include "../Inventory/FixedPointItemDefinition.h"
 #include "Structs/FixedPointInventoryStructs.h"
+#include "../Player/Characters/FixedPointCharacter.h"
 
 DEFINE_LOG_CATEGORY(LogFixedPointInventory);
+
+
+// LIFECYCLE
+
+UFixedPointInventoryComponent::UFixedPointInventoryComponent()
+{
+	
+	
+}
+
+void UFixedPointInventoryComponent::BeginPlay()
+{
+
+	OwningFixedPointCharacter = Cast<AFixedPointCharacter>(GetOwner());
+
+	if (!IsValid(OwningFixedPointCharacter))
+	{
+		UE_LOG(LogFixedPointInventory, Error, TEXT("UFixedPointInventoryComponent::BeginPlay() | Owning Character is not valid"))
+	}
+}
+
 
 void UFixedPointInventoryComponent::TryAddItem(AFixedPointPickup* NewItem)
 {
@@ -60,46 +82,60 @@ void UFixedPointInventoryComponent::TryAddItem(AFixedPointPickup* NewItem)
 	}
 	
 
-	// if inventory items amount is maxed 
 	 
-	if (InventoryItems.Num() == MaxInventoryItems)
+	int32 SlotIndex = INDEX_NONE;
+
+	// Look for an existing empty slot.
+	for (int32 Index = 0; Index < InventoryItems.Num(); ++Index)
 	{
-		// if the item were trying to add is not a world carry
-		if (ItemDefinition->CarryType != EFixedPointCarryType::WorldCarry)
+		if (!IsValid(InventoryItems[Index].Definition))
 		{
-			UE_LOG(LogFixedPointInventory, Warning, TEXT("Can not add item because inventory is full and the new item were trying to add is not a world carry"));
-			return;
+			SlotIndex = Index;
+			break;
 		}
-
-
-
 	}
 
-	// if we cant claim we picked up the item before any one else return cause we didnt pick it up first
-	if (!NewItem->TryClaim())
+	// Check capacity after searching for an empty slot.
+	if (SlotIndex == INDEX_NONE &&
+		InventoryItems.Num() >= MaxInventoryItems &&
+		NewItemCarryType != EFixedPointCarryType::WorldCarry)
 	{
-		UE_LOG(LogFixedPointInventory, Warning, TEXT("Can not add item to inventory someone else already picked it up"));
+		UE_LOG(LogFixedPointInventory, Warning,
+			TEXT("Cannot add item: inventory is full"));
+
 		return;
 	}
-	
-	
-	
 
-	
+	if (!NewItem->TryClaim())
+	{
+		UE_LOG(LogFixedPointInventory, Warning,
+			TEXT("Cannot add item: someone else already picked it up"));
+
+		return;
+	}
+
 	FFixedPointInventoryEntry Entry;
-
 	Entry.Definition = ItemDefinition;
 	Entry.State = NewItem->CaptureItemState();
-	
 
-	InventoryItems.Add(Entry);
+	if (SlotIndex != INDEX_NONE)
+	{
+		// Fill the empty slot we found.
+		InventoryItems[SlotIndex] = Entry;
+	}
+	else
+	{
+		// Create a new slot and remember its index.
+		SlotIndex = InventoryItems.Add(Entry);
+	}
 
-	UE_LOG(LogFixedPointInventory, Log,TEXT("Added item: %s. Inventory count: %d"),*ItemDefinition->GetName(),InventoryItems.Num());
+	UE_LOG(LogFixedPointInventory, Log,
+		TEXT("Added item: %s. Slot: %d"),
+		*ItemDefinition->GetName(), SlotIndex);
 
-	HandleCarryType(Entry);
-	
+	HandleCarryType(Entry, SlotIndex);
 
-
+	OwningFixedPointCharacter->ApplyCarryWeight(Entry.Definition->Weight);
 
 	NewItem->Destroy();
 
@@ -189,7 +225,7 @@ void UFixedPointInventoryComponent::DropItem()
 
 }
 
-void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEntry Entry)
+void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEntry Entry, int32 ItemIndex)
 {
 	UFixedPointItemDefinition* ItemDefinition = Entry.Definition;
 
@@ -209,6 +245,9 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 				SetCurrentHeldItem(ItemDefinition);
  
 				CanSwapHeldItems = true;
+
+				CurrentInventoryIndex = ItemIndex;
+				UE_LOG(LogFixedPointInventory, Log, TEXT("Current inventory index is: %d"), CurrentInventoryIndex)
 
 				//PlayerCharacter->AttachCurrentHeldItem();
 
@@ -230,14 +269,10 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 		{
 			UE_LOG(LogFixedPointInventory, Log, TEXT("Enum Switch HandsFull Code Executing"))
 
-			SetCurrentHeldItem(ItemDefinition);
+				SetCurrentHeldItem(ItemDefinition);
+			CurrentInventoryIndex = ItemIndex;
 
 			CanSwapHeldItems = false;
-
-			//PlayerCharacter->AttachCurrentHeldItem();
-
-			//PlayerCharacter->ApplyWeightChange();
-
 
 			
 			
@@ -311,6 +346,12 @@ void UFixedPointInventoryComponent::SelectInventorySlot(int32 SelectedIndex)
 
 	if (!CanChangeInventorySelection())
 	{
+		return;
+	}
+
+	if (CurrentInventoryIndex == SelectedIndex)
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("SelectInventorySlot() | Selected Slot is the one were already on "));
 		return;
 	}
 

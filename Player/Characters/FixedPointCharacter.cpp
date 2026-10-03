@@ -40,6 +40,8 @@ void AFixedPointCharacter::BeginPlay()
 	Super::BeginPlay();
 
 	BindInteractionCapsuleEvents();
+
+
 }
 
 // MOVEMENT
@@ -162,7 +164,6 @@ void AFixedPointCharacter::ServerSelectInventorySlot_Implementation(int32 Select
 	}
 }
 
-
 void AFixedPointCharacter::SelectNextInventorySlot()
 {
 	if (IsValid(InventoryComponent))
@@ -178,6 +179,7 @@ void AFixedPointCharacter::SelectPreviousInventorySlot()
 		ServerCyclePreviousInventorySlot();
 	}
 }
+
 void AFixedPointCharacter::ServerCycleNextInventorySlot_Implementation()
 {
 	if (IsValid(InventoryComponent))
@@ -212,7 +214,10 @@ void AFixedPointCharacter::ServerDropItem_Implementation()
 
 void AFixedPointCharacter::StartUseItemPrimary()
 {
-
+	if(IsValid(InventoryComponent))
+	{
+		
+	}
 }
 
 void AFixedPointCharacter::StopUseItemPrimary()
@@ -229,10 +234,6 @@ void AFixedPointCharacter::StopUseItemSecondary()
 {
 
 }
-
-
-
-
 
 // INTERACTION
 
@@ -632,4 +633,13 @@ void AFixedPointCharacter::InitializeCameraComponent()
 
 	// Pitch and yaw come from the owning PlayerController's control rotation.
 	PlayerCamera->bUsePawnControlRotation = true;
+}
+
+//Weight
+
+void AFixedPointCharacter::ApplyCarryWeight(float AddedWeight)
+{
+	TotalCarryWeight += AddedWeight;
+
+	SpeedReductionMultiplier = FMath::GetMappedRangeValueClamped(FVector2D(MinCarryWeight, MaxCarryWeight), FVector2D(MinSpeedReductionMultiplier, MaxSpeedReductionMultiplier), TotalCarryWeight);
 }

@@ -111,3 +111,14 @@ void AFixedPointPickup::UpdateItemState(FFixedPointInventoryEntry Entry)
 
 	return;
 }
+
+
+void AFixedPointPickup::PickupPrimaryFunction()
+{
+	UE_LOG(LogFixedPointPickup, Warning, TEXT("PickupPrimaryFunction() | Base Class executed"));
+}
+
+void AFixedPointPickup::PickupSecondaryFunction()
+{
+	UE_LOG(LogFixedPointPickup, Warning, TEXT("PickupSecondaryFunction() | Base Class executed"));
+}

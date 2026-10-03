@@ -2,6 +2,8 @@
 
 #include "GameFramework/Character.h"
 
+#include "../Characters/FixedPointCharacter.h"
+
 
 /*
  * Extends Unreal's client-side saved move to record sprint intent for each
@@ -272,12 +274,25 @@ bool UFixedPointMovementComponent::CanSprint() const
 
 float UFixedPointMovementComponent::GetMaxSpeed() const
 {
-	if (IsSprinting()) // if we are in fact able to sprint and we want to sprint this frame
+	// Get the parent's selected speed for walking, crouching, swimming, etc.
+	float BaseSpeed = Super::GetMaxSpeed();
+
+	// Use our custom sprint speed when sprinting.
+	if (IsSprinting())
 	{
-		return SprintSpeed; // using UEs max speed function return are sprint speed float as that speed
+		BaseSpeed = SprintSpeed;
 	}
 
-	return Super::GetMaxSpeed(); // if were not sprinting use are walk speed which is the normal max speed
+	const AFixedPointCharacter* PlayerCharacter =
+		Cast<AFixedPointCharacter>(CharacterOwner);
+
+	if (!IsValid(PlayerCharacter))
+	{
+		return BaseSpeed;
+	}
+
+	// Apply weight slowdown to whichever speed was selected.
+
+	UE_LOG(LogTemp, Log,TEXT("BaseSpeed is: %f"), BaseSpeed * PlayerCharacter->GetSpeedReductionMultiplier())
+	return BaseSpeed * PlayerCharacter->GetSpeedReductionMultiplier();
 }
-
-
