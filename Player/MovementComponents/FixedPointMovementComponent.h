@@ -26,6 +26,7 @@ public:
 
 	virtual FNetworkPredictionData_Client* GetPredictionData_Client() const override;
 
+	
 
 protected:
 

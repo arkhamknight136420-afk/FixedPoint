@@ -44,6 +44,19 @@ void AFixedPointCharacter::BeginPlay()
 
 }
 
+// MULTIPLAYER
+
+void AFixedPointCharacter::GetLifetimeReplicatedProps(
+	TArray<FLifetimeProperty>& OutLifetimeProps) const
+{
+	// Register inherited properties that need to be replicated from the server to the client
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// Register our additional property in the same array.
+	DOREPLIFETIME(AFixedPointCharacter, SpeedReductionMultiplier);
+}
+
+
 // MOVEMENT
 
 void AFixedPointCharacter::InitializeMovementComponent()
@@ -637,9 +650,38 @@ void AFixedPointCharacter::InitializeCameraComponent()
 
 //Weight
 
-void AFixedPointCharacter::ApplyCarryWeight(float AddedWeight)
+void AFixedPointCharacter::RefreshCarryWeight()
 {
-	TotalCarryWeight += AddedWeight;
+	if (!HasAuthority())
+	{
+		UE_LOG(LogFixedPointCharacter, Warning, TEXT("RefreshCarryWeight() | The owning object of this function does not have authority returning early"))
 
-	SpeedReductionMultiplier = FMath::GetMappedRangeValueClamped(FVector2D(MinCarryWeight, MaxCarryWeight), FVector2D(MinSpeedReductionMultiplier, MaxSpeedReductionMultiplier), TotalCarryWeight);
+		return;
+	}
+
+	if (!IsValid(InventoryComponent))
+	{
+		UE_LOG(
+			LogFixedPointCharacter,
+			Warning,
+			TEXT("RefreshCarryWeight: inventory component is invalid"));
+
+		return;
+	}
+
+	TotalCarryWeight = InventoryComponent->CalculateCarryWeight();
+
+	SpeedReductionMultiplier = FMath::GetMappedRangeValueClamped(
+		FVector2D(MinCarryWeight, MaxCarryWeight),
+		FVector2D(
+			MinSpeedReductionMultiplier,
+			MaxSpeedReductionMultiplier),
+		TotalCarryWeight);
+
+	UE_LOG(
+		LogFixedPointCharacter,
+		Log,
+		TEXT("Carry weight recalculated: %.2f lb | Speed multiplier: %.3f"),
+		TotalCarryWeight,
+		SpeedReductionMultiplier);
 }

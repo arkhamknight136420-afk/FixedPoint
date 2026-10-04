@@ -51,6 +51,12 @@ public:
 	}
 	
 
+	//WEIGHT
+
+	float CalculateCarryWeight() const;
+
+
+
 protected:
 	
 	
@@ -59,7 +65,13 @@ protected:
 
 	// void Has item
 
+	UPROPERTY()
+	FFixedPointInventoryEntry WorldCarryEntry;
+
+	UPROPERTY()
 	TArray <FFixedPointInventoryEntry> InventoryItems;
+
+
 
 	
 
@@ -85,9 +97,6 @@ protected:
 	 // DO NOT SET TO LESS THEN ONE
 	 UPROPERTY()
 	int MaxInventoryItems = 3;
-
-	UPROPERTY()
-	int MaxWorldCarryItems =  1;
 
 
 	

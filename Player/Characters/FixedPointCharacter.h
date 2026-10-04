@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Net/UnrealNetwork.h"
 #include "FixedPointCharacter.generated.h"
 
 
@@ -28,6 +29,8 @@ public:
 
 	virtual void BeginPlay() override;
 
+	//NETWORKING
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
 	// MOVEMENT
 	
@@ -69,9 +72,9 @@ public:
 		return SpeedReductionMultiplier;
 	}
 
-	UFUNCTION(BlueprintCallable)
-	void ApplyCarryWeight(float AddedWeight);
 
+	UFUNCTION(BlueprintCallable, Category = "Weight")
+	void RefreshCarryWeight();
 
 	
 	// INTERACTION
@@ -110,7 +113,7 @@ protected:
 	float MaxSpeedReductionMultiplier = 0.6f;
 
 	// Current movement speed multiplier for slowdown.
-	UPROPERTY(BlueprintReadonly, Category = "Weight")
+	UPROPERTY(Replicated, BlueprintReadonly, Category = "Weight")
 	float SpeedReductionMultiplier = 1.f;
 
 	// The minimum amount of additional weight the player is carrying from objects in there inventory

@@ -293,6 +293,7 @@ float UFixedPointMovementComponent::GetMaxSpeed() const
 
 	// Apply weight slowdown to whichever speed was selected.
 
-	UE_LOG(LogTemp, Log,TEXT("BaseSpeed is: %f"), BaseSpeed * PlayerCharacter->GetSpeedReductionMultiplier())
 	return BaseSpeed * PlayerCharacter->GetSpeedReductionMultiplier();
 }
+
+
