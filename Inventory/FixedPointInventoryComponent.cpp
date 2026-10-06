@@ -7,6 +7,7 @@
 #include "../Inventory/FixedPointItemDefinition.h"
 #include "Structs/FixedPointInventoryStructs.h"
 #include "../Player/Characters/FixedPointCharacter.h"
+#include "Net/UnrealNetwork.h"
 
 DEFINE_LOG_CATEGORY(LogFixedPointInventory);
 
@@ -15,20 +16,123 @@ DEFINE_LOG_CATEGORY(LogFixedPointInventory);
 
 UFixedPointInventoryComponent::UFixedPointInventoryComponent()
 {
-	
-	
+	// This enables component replication by default. Individual properties still need to be registered for replication.
+	//Your character already creates the inventory as a default subobject and sets bReplicates = true. 
+	// Therefore, this addition completes the relevant component-level setup. 
+	// Epic’s documented pattern requires both the owning actor and the component to replicate
+	SetIsReplicatedByDefault(true);
 }
 
 void UFixedPointInventoryComponent::BeginPlay()
 {
+	Super::BeginPlay();
 
 	OwningFixedPointCharacter = Cast<AFixedPointCharacter>(GetOwner());
 
 	if (!IsValid(OwningFixedPointCharacter))
 	{
 		UE_LOG(LogFixedPointInventory, Error, TEXT("UFixedPointInventoryComponent::BeginPlay() | Owning Character is not valid"))
+
+		return;
 	}
+
+	PublishInventorySummary();
 }
+
+//NETWORKING
+
+void UFixedPointInventoryComponent::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const 
+{ //Override Unreal’s function that describes this component’s replicated properties, adding our properties to the supplied list. Properties as in variables
+
+	// This lets the parent register its inherited replicated properties in the same list.
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// this is a macro that will let us register are additional properties that need to be replicated
+	// first input is the class declaring the properties the reason why is because Because the macro needs to identify a particular property declaration—and that property belongs to a particular class.
+	// These two arguments work together :UFixedPointInventoryComponent, ConfirmedInventorySummary They mean 
+	// :The member named ConfirmedInventorySummary belonging to UFixedPointInventoryComponent.
+	// A property name is not unique throughout the program.For example, two different classes could both contain a property named Health :
+	// next is the property being registered
+	// last is the condition controlling which connection receives it.
+	// COND_OwnerOnly limits delivery to the actor’s owning connection.ReplicatedUsing supplies the associated notification callback.
+	// that condition is responsivle for deciding who recieves this properties data
+
+	DOREPLIFETIME_CONDITION(UFixedPointInventoryComponent, ConfirmedInventorySummary, COND_OwnerOnly);
+}
+
+void UFixedPointInventoryComponent::PublishInventorySummary()
+{
+	AActor* Owner = GetOwner();
+
+	if (!IsValid(Owner))
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("PublishInventorySummary() | The Owner is not valid "))
+
+		return;
+	}
+
+	if (!Owner->HasAuthority())
+	{
+		UE_LOG(LogFixedPointInventory, Warning, TEXT("PublishInventorySummary() | The Owner Does Not Have Authority "))
+
+		return;
+	}
+
+	//create a new local instance of are inventory summary struct
+	FFixedPointInventorySummary NewSummary;
+
+	// begin copying all the current state variables into the summary 
+
+	//creates 3 entries in the slot definition array stored in are local new summary struct, Newly created object-pointer entries start empty.
+	NewSummary.SlotDefinitons.SetNum(MaxInventoryItems);
+
+	// Starting at index 0, copy each inventory entry's definition into the
+	// matching summary slot. Advance the index after each copy, stopping
+	// when we reach the inventory array's size or the maximum slot count.
+	for (int32 Index = 0; Index < InventoryItems.Num() && Index < MaxInventoryItems; ++Index)
+	{
+		NewSummary.SlotDefinitons[Index] = InventoryItems[Index].Definition;
+	}
+
+	NewSummary.WorldCarryDefinition = WorldCarryEntry.Definition;
+	
+	NewSummary.HeldDefinition = CurrentHeldItem;
+
+	NewSummary.SelectedSlotIndex = CurrentInventoryIndex;
+
+	NewSummary.bCanSwapHeldItems = CanSwapHeldItems;
+
+	NewSummary.TotalCarryWeight = CalculateCarryWeight();
+
+	// if the the int32 variable named revision is equal to the max possible 32 bit integer then set the number to one other wise take the variable add one to it
+	// and set it equal to that
+	NewSummary.Revision = ConfirmedInventorySummary.Revision == MAX_int32 ? 1 : ConfirmedInventorySummary.Revision + 1;
+
+	// MoveTemp enables move assignment, allowing the destination to take ownership
+	// of NewSummary's array storage instead of copying its entries.
+	// We use it because we no longer need NewSummary's contents afterward.
+	ConfirmedInventorySummary = MoveTemp(NewSummary);
+
+	//This asks Unreal to update replication for the owning actor sooner. We call it on the actor because this component replicates as part of that actor.
+	Owner->ForceNetUpdate();
+
+	// This prints the server’s stored copy.
+	// Publication remains an ordinary server - side operation : build the data, assign it, request replication, and print it.
+	LogInventorySummary();
+}
+
+void UFixedPointInventoryComponent::OnRep_ConfirmedInventorySummary()
+{
+	LogInventorySummary();
+}
+
+void UFixedPointInventoryComponent::LogInventorySummary() const
+{
+	const AActor* Owner = GetOwner();
+
+
+}
+//INVENTORY
 
 void UFixedPointInventoryComponent::TryAddItem(
 	AFixedPointPickup* NewItem)
@@ -523,3 +627,5 @@ float UFixedPointInventoryComponent::CalculateCarryWeight() const
 
 	return TotalWeight;
 }
+
+

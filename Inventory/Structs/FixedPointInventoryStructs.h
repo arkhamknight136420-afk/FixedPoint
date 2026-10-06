@@ -9,6 +9,42 @@
  
 class UFixedPointItemDefinition;
 
+
+USTRUCT(BlueprintType)
+struct FIXEDPOINT_API FFixedPointInventorySummary
+{
+    GENERATED_BODY()
+
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    TArray<TObjectPtr<UFixedPointItemDefinition>> SlotDefinitons;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    TObjectPtr<UFixedPointItemDefinition> WorldCarryDefinition = nullptr;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    TObjectPtr<UFixedPointItemDefinition> HeldDefinition = nullptr;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    int32 SelectedSlotIndex = INDEX_NONE;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    bool bCanSwapHeldItems = true;
+
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    float TotalCarryWeight = 0.0f;
+
+    // In this implementation, revision zero is the initial default. Publishing creates revision one, then two, and so on.
+    //More precisely, this is a publication counter : the proposed function increments it whenever called.It does not compare
+    // all fields to prove that their contents changed. It also does not identify a pickup request.A new revision could result from selecting a slot,
+    // picking up an item, or dropping something.
+
+    UPROPERTY(BlueprintReadOnly, Category = "Inventory")
+    int32 Revision = 0;
+
+
+};
+
+
 USTRUCT(BlueprintType)
 struct FFixedPointInventoryEntry
 {
