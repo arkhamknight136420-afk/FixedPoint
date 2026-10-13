@@ -78,7 +78,20 @@ void AFixedPointPickup::Interact_Implementation(AFixedPointCharacter* Interactin
 
 	UE_LOG(LogFixedPointPickup, Log, TEXT("Interact_Implementation: Calling TryAddItem() "));
 	
-	InventoryComponent->TryAddItem(this);
+	if (InventoryComponent->TryAddItem(this))
+	{
+		UE_LOG(
+			LogFixedPointPickup,
+			Log,
+			TEXT("Server pickup result: accepted"));
+	}
+	else
+	{
+		UE_LOG(
+			LogFixedPointPickup,
+			Log,
+			TEXT("Server pickup result: rejected"));
+	}
 
 
 

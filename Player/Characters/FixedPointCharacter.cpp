@@ -650,6 +650,16 @@ void AFixedPointCharacter::InitializeCameraComponent()
 
 //Weight
 
+float AFixedPointCharacter::CalculateSpeedReductionMultiplier(float CarryWeight) const
+{
+	return FMath::GetMappedRangeValueClamped(
+		FVector2D(MinCarryWeight, MaxCarryWeight),
+		FVector2D(
+			MinSpeedReductionMultiplier,
+			MaxSpeedReductionMultiplier),
+		CarryWeight);
+}
+
 void AFixedPointCharacter::RefreshCarryWeight()
 {
 	if (!HasAuthority())
@@ -671,12 +681,7 @@ void AFixedPointCharacter::RefreshCarryWeight()
 
 	TotalCarryWeight = InventoryComponent->CalculateCarryWeight();
 
-	SpeedReductionMultiplier = FMath::GetMappedRangeValueClamped(
-		FVector2D(MinCarryWeight, MaxCarryWeight),
-		FVector2D(
-			MinSpeedReductionMultiplier,
-			MaxSpeedReductionMultiplier),
-		TotalCarryWeight);
+	SpeedReductionMultiplier = CalculateSpeedReductionMultiplier(TotalCarryWeight);
 
 	UE_LOG(
 		LogFixedPointCharacter,

@@ -67,11 +67,7 @@ public:
 	void ToggleCrouch();
 
 	// WEIGHT
-	float GetSpeedReductionMultiplier() const
-	{
-		return SpeedReductionMultiplier;
-	}
-
+	float CalculateSpeedReductionMultiplier(float CarryWeight) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Weight")
 	void RefreshCarryWeight();

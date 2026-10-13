@@ -29,7 +29,7 @@ public:
 
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
 
-	UFUNCTION(Bluepure, Category = "Inventory")
+	UFUNCTION(Blueprintpure, Category = "Inventory")
 	FFixedPointInventorySummary GetConfirmedInventorySummary() const
 	{
 		return ConfirmedInventorySummary;
@@ -38,7 +38,7 @@ public:
 	// INVENTORY
 
 	UFUNCTION(BlueprintCallable)
-	void TryAddItem(AFixedPointPickup* NewItem);
+	bool TryAddItem(AFixedPointPickup* NewItem);
 
 	
 
@@ -131,7 +131,7 @@ private:
 	FFixedPointInventorySummary ConfirmedInventorySummary;
 
 	UFUNCTION()
-	OnRep_ConfirmedInventorySummary();
+	void OnRep_ConfirmedInventorySummary();
 
 	//INVENTORY
 	bool CanChangeInventorySelection() const;
@@ -142,6 +142,7 @@ private:
 
 	void CycleInventorySlot(int32 Direction);
 
+	// Which slot the player currently has selected.
 	UPROPERTY()
 	int CurrentInventoryIndex = INDEX_NONE;
 

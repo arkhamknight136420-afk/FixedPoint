@@ -36,6 +36,18 @@ void UFixedPointInventoryComponent::BeginPlay()
 		return;
 	}
 
+	if (!OwningFixedPointCharacter->HasAuthority())
+	{
+		UE_LOG(LogFixedPointInventory, Verbose, TEXT("UFixedPointInventoryComponent::BeginPlay() | Owning Character Does not have authority"))
+		return;
+	}
+
+	// creates three inventory Entires in the array of inventory items all definitions in it are nullptr and the state is empty
+	InventoryItems.SetNum(MaxInventoryItems);
+
+	//Makes it so that are Starting inventory slot were on is the first slot
+	CurrentInventoryIndex = 0;
+
 	PublishInventorySummary();
 }
 
@@ -130,11 +142,27 @@ void UFixedPointInventoryComponent::LogInventorySummary() const
 {
 	const AActor* Owner = GetOwner();
 
+	UE_LOG(
+		LogFixedPointInventory,
+		Log,
+		TEXT("Confirmed inventory | Owner: %s | Authority: %s | Revision: %d | Selected: %d | Held: %s | WorldCarry: %s | Can swap: %s | Weight: %.2f lb"),
+		*GetNameSafe(Owner),
+		IsValid(Owner) && Owner->HasAuthority()
+		? TEXT("Server")
+		: TEXT("Client"),
+		ConfirmedInventorySummary.Revision,
+		ConfirmedInventorySummary.SelectedSlotIndex,
+		*GetNameSafe(ConfirmedInventorySummary.HeldDefinition.Get()),
+		*GetNameSafe(ConfirmedInventorySummary.WorldCarryDefinition.Get()),
+		ConfirmedInventorySummary.bCanSwapHeldItems
+		? TEXT("true")
+		: TEXT("false"),
+		ConfirmedInventorySummary.TotalCarryWeight);
 
 }
 //INVENTORY
 
-void UFixedPointInventoryComponent::TryAddItem(
+bool UFixedPointInventoryComponent::TryAddItem(
 	AFixedPointPickup* NewItem)
 {
 	AActor* Owner = GetOwner();
@@ -144,7 +172,7 @@ void UFixedPointInventoryComponent::TryAddItem(
 		!IsValid(OwningFixedPointCharacter) ||
 		!IsValid(NewItem))
 	{
-		return;
+		return false;
 	}
 
 	UFixedPointItemDefinition* ItemDefinition =
@@ -152,7 +180,7 @@ void UFixedPointInventoryComponent::TryAddItem(
 
 	if (!IsValid(ItemDefinition))
 	{
-		return;
+		return false;
 	}
 
 	const EFixedPointCarryType NewCarryType =
@@ -169,7 +197,7 @@ void UFixedPointInventoryComponent::TryAddItem(
 			Warning,
 			TEXT("Pickup rejected: already holding a WorldCarry item"));
 
-		return;
+		return false;
 	}
 
 	// While holding HandsFull, only Pocketable pickups are allowed.
@@ -182,32 +210,59 @@ void UFixedPointInventoryComponent::TryAddItem(
 			Warning,
 			TEXT("Pickup rejected: holding HandsFull; new item is not Pocketable"));
 
-		return;
+		return false;
 	}
-
+	// Where we will store the incoming pickup.
 	int32 SlotIndex = INDEX_NONE;
 
+	// if the item is not a world carry execute this code
 	if (!bIsWorldCarry)
 	{
-		for (int32 Index = 0; Index < InventoryItems.Num(); ++Index)
+		// if the new added inventory items carry type is pocketable and the index were on in the inventory is valid 
+		// and there is currently no valid item definition there
+		if (NewCarryType == EFixedPointCarryType::Pocketable &&
+			InventoryItems.IsValidIndex(CurrentInventoryIndex) &&
+			!IsValid(InventoryItems[CurrentInventoryIndex].Definition))
 		{
-			if (!IsValid(InventoryItems[Index].Definition))
+			// copy the inventory index were at into the local slot index variable cause this means we wanna add the item here cause theres nothing in this slot
+			SlotIndex = CurrentInventoryIndex;
+		}
+
+		//search else where only if we havent chosen an inventory slot 
+		// Because we initialize it with SlotIndex = INDEX_NONE;.If the selected slot is already occupied, the previous check doesn’t change
+		// SlotIndex, so it remains INDEX_NONE.That tells us we still need to find an empty slot.
+		if (SlotIndex == INDEX_NONE)
+		{
+			// whenever the index were currently on in the inventory array is less then the max holdable items execute this code then add one to index
+			for (int32 Index = 0; Index < InventoryItems.Num(); ++Index)
 			{
-				SlotIndex = Index;
-				break;
+				// if the stored item definition in the index were on in the array is not valid that means its an empty slot we can store something in 
+				// so set slot index the variable thats deciding where we will store the incoming pickup  to  the index were on in the loop 
+				if (!IsValid(InventoryItems[Index].Definition))
+				{
+					SlotIndex = Index;
+					break;
+				}
 			}
 		}
 
+		// SlotIndex == INDEX_NONE: We did not find an empty slot.
+		// &&: Both conditions must be true.
+		// InventoryItems.Num() >= MaxInventoryItems:
+		// The array already contains the maximum allowed number of slots.
+		// Num() counts ALL slots, including empty ones.
 		if (SlotIndex == INDEX_NONE &&
 			InventoryItems.Num() >= MaxInventoryItems)
 		{
 			UE_LOG(
-				LogFixedPointInventory,
-				Warning,
-				TEXT("Pickup rejected: inventory is full"));
+				LogFixedPointInventory, // Write to our inventory log category.
+				Warning, // Display the message as a warning.
+				TEXT("Pickup rejected: inventory is full")); // Message to display.
 
-			return;
+			// Exit TryAddItem() before claiming or storing the pickup.
+			return false; 
 		}
+
 	}
 
 	// Claim only after checking carry restrictions and capacity.
@@ -218,7 +273,7 @@ void UFixedPointInventoryComponent::TryAddItem(
 			Warning,
 			TEXT("Pickup rejected: item was already claimed"));
 
-		return;
+		return false;
 	}
 
 	FFixedPointInventoryEntry Entry;
@@ -242,6 +297,8 @@ void UFixedPointInventoryComponent::TryAddItem(
 
 	OwningFixedPointCharacter->RefreshCarryWeight();
 
+	PublishInventorySummary();
+
 	UE_LOG(
 		LogFixedPointInventory,
 		Log,
@@ -251,6 +308,8 @@ void UFixedPointInventoryComponent::TryAddItem(
 		*GetNameSafe(WorldCarryEntry.Definition.Get()));
 
 	NewItem->Destroy();
+
+	return true;
 }
 
 bool UFixedPointInventoryComponent::CanDropItem()
@@ -298,10 +357,39 @@ void UFixedPointInventoryComponent::DropItem()
 
 	const int32 DroppedIndex = CurrentInventoryIndex;
 
-	const FFixedPointInventoryEntry Entry =
-		bDroppingWorldCarry
-		? WorldCarryEntry
-		: InventoryItems[DroppedIndex];
+	// First, copy the item we are dropping.
+	// Keep the original storage unchanged until spawning succeeds.
+	FFixedPointInventoryEntry Entry;
+
+	if (bDroppingWorldCarry)
+	{
+		Entry = WorldCarryEntry;
+	}
+	else
+	{
+		Entry = InventoryItems[DroppedIndex];
+	}
+
+	// Protect against accessing an empty definition.
+	if (!IsValid(Entry.Definition))
+	{
+		UE_LOG(
+			LogFixedPointInventory,
+			Error,
+			TEXT("DropItem: copied entry has no valid definition"));
+
+		return;
+	}
+
+	if (!Entry.Definition->WorldPickupClass)
+	{
+		UE_LOG(
+			LogFixedPointInventory,
+			Warning,
+			TEXT("DropItem: item has no world pickup class"));
+
+		return;
+	}
 
 	UWorld* CurrentWorld = GetWorld();
 
@@ -338,25 +426,39 @@ void UFixedPointInventoryComponent::DropItem()
 		return;
 	}
 
+	// Restore the dropped object's saved state.
 	SpawnedActor->UpdateItemState(Entry);
 
+	// Spawning succeeded. Now update our storage and held item.
 	if (bDroppingWorldCarry)
 	{
 		WorldCarryEntry = FFixedPointInventoryEntry{};
+
+		UFixedPointItemDefinition* SelectedSlotDefinition = nullptr;
+
+		if (InventoryItems.IsValidIndex(CurrentInventoryIndex))
+		{
+			SelectedSlotDefinition =
+				InventoryItems[CurrentInventoryIndex].Definition;
+		}
+
+		SetCurrentHeldItem(SelectedSlotDefinition);
 	}
 	else
 	{
 		InventoryItems[DroppedIndex] = FFixedPointInventoryEntry{};
+
+		SetCurrentHeldItem(nullptr);
 	}
 
-	CurrentInventoryIndex = INDEX_NONE;
-	CurrentHeldItem = nullptr;
 	CanSwapHeldItems = true;
 
 	if (IsValid(OwningFixedPointCharacter))
 	{
 		OwningFixedPointCharacter->RefreshCarryWeight();
 	}
+
+	PublishInventorySummary();
 
 	UE_LOG(
 		LogFixedPointInventory,
@@ -435,7 +537,6 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 		{
 			SetCurrentHeldItem(ItemDefinition);
 
-			CurrentInventoryIndex = INDEX_NONE;
 			CanSwapHeldItems = false;
 
 			break;
@@ -450,20 +551,14 @@ void UFixedPointInventoryComponent::HandleCarryType(const FFixedPointInventoryEn
 void UFixedPointInventoryComponent::SetCurrentHeldItem(UFixedPointItemDefinition* NewHeldItem)
 {
 
-	if (!IsValid(NewHeldItem))
-	{
-		UE_LOG(LogFixedPointInventory, Warning, TEXT("SetCurrentHeldItem: attempted to set current held item but could not cause the item was invalid"))
-
-		return;
-	}
-
 
 	CurrentHeldItem = NewHeldItem;
 
-	UE_LOG(LogFixedPointInventory, Log, TEXT("SetCurrentHeldItem: Current Held item is now: %s"), *CurrentHeldItem->GetName())
-
-
-
+	UE_LOG(
+		LogFixedPointInventory,
+		Log,
+		TEXT("SetCurrentHeldItem: Current held item is now: %s"),
+		*GetNameSafe(CurrentHeldItem));
 
 }
 
@@ -495,15 +590,11 @@ void UFixedPointInventoryComponent::SelectInventorySlot(int32 SelectedIndex)
 
 	UFixedPointItemDefinition* ItemDefinition = ItemEntry.Definition;
 
-	if (!IsValid(ItemDefinition))
-	{
-		UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot() | Item Definition is Invalid"));
-		return;
-	}
-
 	SetCurrentHeldItem(ItemDefinition);
 
 	CurrentInventoryIndex = SelectedIndex;
+
+	PublishInventorySummary();
 
 	UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot: Current Inventory Index is: %d"), CurrentInventoryIndex);
 
@@ -512,82 +603,82 @@ void UFixedPointInventoryComponent::SelectInventorySlot(int32 SelectedIndex)
 
 void UFixedPointInventoryComponent::CycleNextInventorySlot()
 {
-	if (!CanChangeInventorySelection())
-	{
-		return;
-	}
-
-	if (InventoryItems.Num() == 0)
-	{
-		return;
-	}
-
-	// If we're at the last item, cycle back to the first.
-	if (CurrentInventoryIndex + 1 >= InventoryItems.Num())
-	{
-		CurrentInventoryIndex = 0;
-	}
-	else
-	{
-		CurrentInventoryIndex += 1;
-	}
-
-	FFixedPointInventoryEntry ItemEntry = InventoryItems[CurrentInventoryIndex];
-
-	UFixedPointItemDefinition* ItemDefinition = ItemEntry.Definition;
-
-	if (!IsValid(ItemDefinition))
-	{
-		return;
-	}
-
-	SetCurrentHeldItem(ItemDefinition);
-
-	UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot: Current Inventory Index is: %d"), CurrentInventoryIndex);
-
-	//PlayerCharacter->AttachCurrentHeldItem();
+	CycleInventorySlot(1);
 }
 
 void UFixedPointInventoryComponent::CyclePreviousInventorySlot()
 {
+
+	CycleInventorySlot(-1);
+
+}
+
+void UFixedPointInventoryComponent::CycleInventorySlot(int32 Direction)
+{
 	if (!CanChangeInventorySelection())
 	{
+		UE_LOG(
+			LogFixedPointInventory,
+			Warning,
+			TEXT("CycleInventorySlot: Cannot change inventory selection"));
+
 		return;
 	}
 
-	if (InventoryItems.Num() == 0)
+	if (Direction != 1 && Direction != -1)
 	{
+		UE_LOG(
+			LogFixedPointInventory,
+			Warning,
+			TEXT("CycleInventorySlot: Direction must be 1 or -1"));
+
 		return;
 	}
 
-	// If we're at the first item, cycle to the last.
-	if (CurrentInventoryIndex - 1 < 0)
+	const int32 NumSlots = InventoryItems.Num();
+
+	int32 CandidateIndex;
+
+	if (InventoryItems.IsValidIndex(CurrentInventoryIndex))
 	{
-		CurrentInventoryIndex = InventoryItems.Num() - 1;
+		CandidateIndex = CurrentInventoryIndex;
 	}
 	else
 	{
-		CurrentInventoryIndex -= 1;
+		if (Direction == 1)
+		{
+			CandidateIndex = NumSlots - 1;
+		}
+		else
+		{
+			CandidateIndex = 0;
+		}
 	}
 
-	FFixedPointInventoryEntry ItemEntry = InventoryItems[CurrentInventoryIndex];
+	CandidateIndex = CandidateIndex + Direction;
 
-	UFixedPointItemDefinition* ItemDefinition = ItemEntry.Definition;
-
-	if (!IsValid(ItemDefinition))
+	if (CandidateIndex >= NumSlots)
 	{
-		return;
+		CandidateIndex = 0;
+	}
+	else if (CandidateIndex < 0)
+	{
+		CandidateIndex = NumSlots - 1;
 	}
 
-	SetCurrentHeldItem(ItemDefinition);
-
-	UE_LOG(LogFixedPointInventory, Log, TEXT("SelectInventorySlot: Current Inventory Index is: %d"), CurrentInventoryIndex);
-
-	//PlayerCharacter->AttachCurrentHeldItem();
+	SelectInventorySlot(CandidateIndex);
 }
+
 
 bool UFixedPointInventoryComponent::CanChangeInventorySelection() const
 {
+	const AActor* Owner = GetOwner();
+
+	if (!IsValid(Owner) || !Owner->HasAuthority())
+	{
+		return false;
+	}
+
 	if (!CanSwapHeldItems)
 	{
 		UE_LOG(LogFixedPointInventory, Warning, TEXT("CanSelectInventorySlot: Can not swap Held items "))
@@ -604,6 +695,7 @@ bool UFixedPointInventoryComponent::CanChangeInventorySelection() const
 	return true;
 
 }
+
 
 float UFixedPointInventoryComponent::CalculateCarryWeight() const
 {
