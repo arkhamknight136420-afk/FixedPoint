@@ -16,8 +16,7 @@ DEFINE_LOG_CATEGORY(LogFixedPointCharacter);
 
 // LIFE CYCLE
 
-AFixedPointCharacter::AFixedPointCharacter(
-	const FObjectInitializer& ObjectInitializer)
+AFixedPointCharacter::AFixedPointCharacter(const FObjectInitializer& ObjectInitializer)
 	: Super(
 		ObjectInitializer.SetDefaultSubobjectClass<UFixedPointMovementComponent>(
 			ACharacter::CharacterMovementComponentName))

@@ -1,8 +1,9 @@
 #include "FixedPointMovementComponent.h"
-
 #include "GameFramework/Character.h"
-
+#include "../../Inventory/FixedPointInventoryComponent.h"
 #include "../Characters/FixedPointCharacter.h"
+
+
 
 
 /*
@@ -274,10 +275,8 @@ bool UFixedPointMovementComponent::CanSprint() const
 
 float UFixedPointMovementComponent::GetMaxSpeed() const
 {
-	// Get the parent's selected speed for walking, crouching, swimming, etc.
 	float BaseSpeed = Super::GetMaxSpeed();
 
-	// Use our custom sprint speed when sprinting.
 	if (IsSprinting())
 	{
 		BaseSpeed = SprintSpeed;
@@ -291,9 +290,29 @@ float UFixedPointMovementComponent::GetMaxSpeed() const
 		return BaseSpeed;
 	}
 
-	// Apply weight slowdown to whichever speed was selected.
+	float SpeedMultiplier =
+		PlayerCharacter->GetConfirmedSpeedReductionMultiplier();
 
-	return BaseSpeed * PlayerCharacter->GetSpeedReductionMultiplier();
+	if (!PlayerCharacter->HasAuthority() &&
+		PlayerCharacter->IsLocallyControlled())
+	{
+		const UFixedPointInventoryComponent* InventoryComponent =
+			PlayerCharacter->GetInventoryComponent();
+
+		if (IsValid(InventoryComponent))
+		{
+			const FFixedPointInventorySummary Summary =
+				InventoryComponent->GetConfirmedInventorySummary();
+
+			if (Summary.Revision > 0)
+			{
+				SpeedMultiplier =
+					PlayerCharacter->CalculateSpeedReductionMultiplier(
+						Summary.TotalCarryWeight);
+			}
+		}
+	}
+
+	return BaseSpeed * SpeedMultiplier;
 }
-
 

@@ -67,6 +67,12 @@ public:
 	void ToggleCrouch();
 
 	// WEIGHT
+
+	float GetConfirmedSpeedReductionMultiplier() const
+	{
+		return SpeedReductionMultiplier;
+	}
+
 	float CalculateSpeedReductionMultiplier(float CarryWeight) const;
 
 	UFUNCTION(BlueprintCallable, Category = "Weight")
@@ -79,9 +85,9 @@ public:
 
 	//INVENTORY
 
-	UFixedPointInventoryComponent* GetInventoryComponent()
+	UFixedPointInventoryComponent* GetInventoryComponent() const
 	{
-		return  InventoryComponent;
+		return InventoryComponent;
 	}
 
 protected:

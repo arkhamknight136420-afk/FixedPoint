@@ -85,6 +85,9 @@ void AFixedPointPickup::Interact_Implementation(AFixedPointCharacter* Interactin
 			Log,
 			TEXT("Server pickup result: accepted"));
 	}
+
+
+
 	else
 	{
 		UE_LOG(
